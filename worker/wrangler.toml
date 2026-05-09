@@ -1,0 +1,14 @@
+name = "jeongdamgudo-nas"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+# Non-secret defaults. Override with `wrangler secret put` for sensitive values.
+[vars]
+NAS_BASE_PATH = "/jeongdamgudo"
+ALLOWED_ORIGIN = "*"
+
+# Secrets to set via CLI (NEVER put real values here):
+#   wrangler secret put NAS_URL
+#   wrangler secret put NAS_USER
+#   wrangler secret put NAS_PASS
+#   wrangler secret put API_KEY    (optional; if set, frontend must send X-API-Key)

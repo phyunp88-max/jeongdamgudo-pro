@@ -844,16 +844,25 @@
 <div class="modal-bg" id="modal-upload">
   <div class="modal">
     <h3>New Document</h3>
-    <div class="form-row"><label>File Name</label><input class="field" id="up-name" placeholder="floor-plan-v3.dwg"/></div>
+    <!-- File input: shown in NAS mode -->
+    <div class="form-row" id="up-file-row" style="display:none">
+      <label>File</label>
+      <input class="field" id="up-file" type="file"/>
+    </div>
+    <!-- File name (manual): shown in demo mode -->
+    <div class="form-row" id="up-name-row">
+      <label>File Name</label>
+      <input class="field" id="up-name" placeholder="floor-plan-v3.dwg"/>
+    </div>
     <div class="form-grid">
       <div class="form-row"><label>Category</label>
         <select class="field" id="up-cat">
           <option>DRAWINGS</option><option>SPECIFICATIONS</option><option>MINUTES</option><option>CONTRACTS</option><option>OTHERS</option>
         </select>
       </div>
-      <div class="form-row"><label>Size</label><input class="field" id="up-size" placeholder="2.4 MB"/></div>
+      <div class="form-row" id="up-size-row"><label>Size</label><input class="field" id="up-size" placeholder="2.4 MB"/></div>
     </div>
-    <div class="form-row"><label>Tags (comma separated)</label><input class="field" id="up-tags" placeholder="cheongdam, plan"/></div>
+    <div class="form-row" id="up-tags-row"><label>Tags (comma separated)</label><input class="field" id="up-tags" placeholder="cheongdam, plan"/></div>
     <div class="form-actions">
       <button class="btn" data-close>Cancel</button>
       <button class="btn primary" id="up-save">Save</button>
@@ -931,6 +940,28 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* ============================================================
+   NAS BACKEND CONFIG
+   ----------------------------------------------------------------
+   To enable Synology NAS-backed Library, set these to your
+   Cloudflare Worker URL and (optional) shared API key.
+   Leave NAS_API_BASE empty to use the localStorage demo mode.
+============================================================ */
+const NAS_API_BASE = ''; // e.g. 'https://jeongdamgudo-nas.YOURSUB.workers.dev'
+const NAS_API_KEY  = ''; // e.g. 'your-shared-secret'
+const useNAS = !!NAS_API_BASE;
+
+async function nasFetch(path, init = {}) {
+  const headers = { ...(init.headers || {}) };
+  if (NAS_API_KEY) headers['X-API-Key'] = NAS_API_KEY;
+  const r = await fetch(NAS_API_BASE + path, { ...init, headers });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`NAS ${r.status}: ${t.slice(0,200)}`);
+  }
+  return r;
+}
+
 /* ============================================================
    STATE — localStorage backed
 ============================================================ */
@@ -1259,19 +1290,63 @@ document.getElementById('cm-send').addEventListener('click', () => {
 /* ============================================================
    LIBRARY
 ============================================================ */
-function renderLib(){
+function fmtSize(bytes){
+  if(!bytes && bytes !== 0) return '—';
+  const u = ['B','KB','MB','GB'];
+  let i = 0; let n = bytes;
+  while(n >= 1024 && i < u.length-1){ n /= 1024; i++; }
+  return n.toFixed(n < 10 && i > 0 ? 1 : 0) + ' ' + u[i];
+}
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d = new Date(ts * 1000);
+  const z = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+}
+
+async function renderLib(){
   const u = currentUser(); if(!u) return;
   const perms = userPerms(u);
   document.getElementById('btn-upload').style.display = perms.library.w ? '' : 'none';
   const q = document.getElementById('lib-search').value.trim().toLowerCase();
   const sort = document.getElementById('lib-sort').value;
-  let docs = state.docs.filter(d => currentLibCat === 'ALL' || d.cat === currentLibCat);
-  if(q) docs = docs.filter(d => (d.name + d.ownerName + (d.tags||[]).join(' ')).toLowerCase().includes(q));
-  docs.sort((a,b) => sort==='name' ? a.name.localeCompare(b.name) : b.date.localeCompare(a.date));
   const tbody = document.getElementById('lib-body');
+
+  let rows = [];
+
+  if(useNAS){
+    // === NAS mode ===
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-faint);letter-spacing:.3em;font-family:Inter,sans-serif;font-size:11px;text-transform:uppercase">— Loading from NAS —</td></tr>`;
+    try{
+      const r = await nasFetch('/list?category=' + encodeURIComponent(currentLibCat));
+      const j = await r.json();
+      rows = (j.files || []).map(f => ({
+        name: f.name,
+        cat: f.category,
+        ownerName: '—',
+        size: fmtSize(f.size),
+        date: fmtDate(f.mtime),
+        path: f.path,
+        tags: [],
+      }));
+    } catch(e){
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--danger);letter-spacing:.05em;font-size:13px">NAS 연결 실패: ${e.message}</td></tr>`;
+      return;
+    }
+  } else {
+    // === Demo mode ===
+    rows = state.docs.filter(d => currentLibCat === 'ALL' || d.cat === currentLibCat).map(d => ({
+      ...d, path: null,
+    }));
+  }
+
+  if(q) rows = rows.filter(d => (d.name + d.ownerName + (d.tags||[]).join(' ')).toLowerCase().includes(q));
+  rows.sort((a,b) => sort==='name' ? a.name.localeCompare(b.name) : (b.date||'').localeCompare(a.date||''));
+
   tbody.innerHTML = '';
-  docs.forEach(d => {
+  rows.forEach(d => {
     const ext = (d.name.split('.').pop()||'').toUpperCase().slice(0,3);
+    const idAttr = useNAS ? `data-path="${encodeURIComponent(d.path)}"` : `data-id="${d.id}"`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
@@ -1280,29 +1355,61 @@ function renderLib(){
         ${d.tags && d.tags.length ? `<div style="margin-top:6px;margin-left:42px">${d.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>` : ''}
       </td>
       <td>${d.cat}</td>
-      <td>${d.ownerName}</td>
+      <td>${d.ownerName||'—'}</td>
       <td>${d.size}</td>
       <td style="font-family:Inter,sans-serif;font-size:11px;color:var(--ink-faint);letter-spacing:.05em">${d.date}</td>
       <td><div class="row-actions">
-        <button data-act="dl" data-id="${d.id}">Download</button>
-        ${perms.library.d || d.ownerId===u.id ? `<button class="del" data-act="del" data-id="${d.id}">Delete</button>` : ''}
+        <button data-act="dl" ${idAttr}>Download</button>
+        ${perms.library.d || (!useNAS && d.ownerId===u.id) ? `<button class="del" data-act="del" ${idAttr}>Delete</button>` : ''}
       </div></td>
     `;
     tbody.appendChild(tr);
   });
-  if(docs.length === 0){
+  if(rows.length === 0){
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--ink-faint);letter-spacing:.3em;font-family:Inter,sans-serif;font-size:11px;text-transform:uppercase">— No documents —</td></tr>`;
   }
   tbody.querySelectorAll('button[data-act]').forEach(b => {
-    b.addEventListener('click', () => {
-      const id = +b.dataset.id;
-      if(b.dataset.act === 'dl') toast('Download started');
-      else if(b.dataset.act === 'del'){
-        if(!confirm('이 자료를 삭제하시겠습니까?')) return;
-        const d = state.docs.find(x => x.id===id);
-        state.docs = state.docs.filter(x => x.id!==id);
-        saveState(); logEvent(currentUser().username, `자료 삭제 — ${d?.name||id}`, 'delete');
-        renderLib(); toast('Deleted');
+    b.addEventListener('click', async () => {
+      if(useNAS){
+        const path = decodeURIComponent(b.dataset.path);
+        if(b.dataset.act === 'dl'){
+          // Direct browser download via Worker stream
+          const url = NAS_API_BASE + '/download?path=' + encodeURIComponent(path);
+          // If API key is required we need a header — open in invisible link with header? Browsers can't.
+          // Workaround: pass key as query param too (Worker reads either). For simplicity assume no key on /download for now.
+          if(NAS_API_KEY){
+            // Fallback: fetch then save as blob
+            try{
+              toast('Preparing download...');
+              const r = await nasFetch('/download?path=' + encodeURIComponent(path));
+              const blob = await r.blob();
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = path.split('/').pop();
+              document.body.appendChild(a); a.click(); a.remove();
+              URL.revokeObjectURL(a.href);
+            }catch(e){ toast('Download failed: ' + e.message); }
+          } else {
+            window.location = url;
+          }
+        } else if(b.dataset.act === 'del'){
+          if(!confirm('이 자료를 삭제하시겠습니까?')) return;
+          try{
+            await nasFetch('/delete?path=' + encodeURIComponent(path), { method:'DELETE' });
+            logEvent(currentUser().username, `자료 삭제 — ${path.split('/').pop()}`, 'delete');
+            toast('Deleted'); renderLib();
+          }catch(e){ toast('Delete failed: ' + e.message); }
+        }
+      } else {
+        const id = +b.dataset.id;
+        if(b.dataset.act === 'dl') toast('Download started');
+        else if(b.dataset.act === 'del'){
+          if(!confirm('이 자료를 삭제하시겠습니까?')) return;
+          const d = state.docs.find(x => x.id===id);
+          state.docs = state.docs.filter(x => x.id!==id);
+          saveState(); logEvent(currentUser().username, `자료 삭제 — ${d?.name||id}`, 'delete');
+          renderLib(); toast('Deleted');
+        }
       }
     });
   });
@@ -1321,13 +1428,38 @@ document.getElementById('btn-upload').addEventListener('click', () => {
   document.getElementById('up-name').value = '';
   document.getElementById('up-size').value = '';
   document.getElementById('up-tags').value = '';
+  if(document.getElementById('up-file')) document.getElementById('up-file').value = '';
+  // Toggle visibility based on mode
+  document.getElementById('up-file-row').style.display  = useNAS ? '' : 'none';
+  document.getElementById('up-name-row').style.display  = useNAS ? 'none' : '';
+  document.getElementById('up-size-row').style.display  = useNAS ? 'none' : '';
+  document.getElementById('up-tags-row').style.display  = useNAS ? 'none' : '';
   openModal('modal-upload');
 });
-document.getElementById('up-save').addEventListener('click', () => {
+document.getElementById('up-save').addEventListener('click', async () => {
   const u = currentUser();
+  const cat = document.getElementById('up-cat').value;
+
+  if(useNAS){
+    const fileInput = document.getElementById('up-file');
+    const file = fileInput && fileInput.files && fileInput.files[0];
+    if(!file){ toast('파일을 선택해 주세요'); return; }
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    fd.append('category', cat);
+    try{
+      toast('Uploading...');
+      const r = await nasFetch('/upload', { method:'POST', body: fd });
+      const j = await r.json();
+      if(!j.success && j.error){ toast('Upload failed'); return; }
+      logEvent(u.username, `자료 업로드 — ${file.name}`, 'write');
+      closeModal('modal-upload'); toast('Uploaded'); renderLib();
+    }catch(e){ toast('Upload failed: ' + e.message); }
+    return;
+  }
+
   const name = document.getElementById('up-name').value.trim();
   if(!name){ toast('파일명을 입력해 주세요'); return; }
-  const cat = document.getElementById('up-cat').value;
   const size = document.getElementById('up-size').value.trim() || '— KB';
   const tags = document.getElementById('up-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
   state.docs.unshift({

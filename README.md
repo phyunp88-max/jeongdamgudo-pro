@@ -44,5 +44,27 @@ In the browser console:
 localStorage.clear(); location.reload();
 ```
 
+## Synology NAS Integration (Library)
+
+The Library section can be backed by a real Synology NAS instead of localStorage.
+
+Architecture:
+```
+Browser → Cloudflare Worker (worker/) → Synology File Station API
+```
+
+NAS credentials live only inside the Worker as secrets — never in the browser.
+
+**To enable:**
+1. Deploy the Worker — see [`worker/README.md`](worker/README.md) for setup.
+2. Edit `index.html` and set:
+   ```js
+   const NAS_API_BASE = 'https://jeongdamgudo-nas.YOURSUB.workers.dev';
+   const NAS_API_KEY  = 'your-shared-secret';
+   ```
+3. Commit & redeploy. The Library will switch automatically — uploads pick a real file, downloads stream from the NAS, listings show real files.
+
+Demo mode (NAS_API_BASE empty) keeps everything in localStorage as before.
+
 ---
 © 2026
