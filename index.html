@@ -200,17 +200,13 @@
     padding-left: 0.35em;
   }
   .hero .latin{
-    margin-top: 26px;
+    margin-top: 72px;
     font-family:"Inter", sans-serif;
     font-size: 12px; letter-spacing: 0.55em; color: var(--ink-faint);
   }
-  .hero .greeting{
-    margin-top: 56px; font-size: 13px; color: var(--ink-soft);
-    letter-spacing:.05em; font-weight: 300;
-  }
   .hero .stats{
-    margin-top: 48px;
-    display:flex;justify-content:center;gap:64px; flex-wrap:wrap;
+    margin-top: 112px;
+    display:flex;justify-content:center;gap:80px; flex-wrap:wrap;
     font-family:"Inter",sans-serif;
   }
   .hero .stats .item{ display:flex; flex-direction:column; align-items:center; gap: 6px }
@@ -714,7 +710,6 @@
     <div class="hero">
       <div class="han-big">靜 談 求 道</div>
       <div class="latin">J E O N G D A M G U D O</div>
-      <div class="greeting" id="greeting"></div>
       <div class="stats" id="home-stats"></div>
     </div>
     <div class="modules" id="home-modules"></div>
@@ -1111,15 +1106,11 @@ function enterApp(){
   document.getElementById('u-role').textContent = (state.roles[u.role]?.label || u.role) + ' · ' + u.dept;
   document.getElementById('u-avatar').textContent = (u.name || u.username).slice(0,1);
 
-  document.getElementById('greeting').textContent = `${u.name} · ${nowStr().slice(0,10).replace(/-/g,'.')}`;
-
   const inboxCount = state.mails.filter(m => m.folder === 'inbox' && m.to === u.id && m.unread).length;
-  const docCount = state.docs.length;
-  const userCount = state.users.filter(x => x.status === 'active').length;
   document.getElementById('home-stats').innerHTML = `
     <div class="item"><span class="num">${inboxCount}</span><span class="lbl">New Mail</span></div>
-    <div class="item"><span class="num">${docCount}</span><span class="lbl">Documents</span></div>
-    <div class="item"><span class="num">${userCount}</span><span class="lbl">Active Users</span></div>
+    <div class="item"><span class="num">${u.name}</span><span class="lbl">User</span></div>
+    <div class="item"><span class="num">${nowStr().slice(0,10).replace(/-/g,'.')}</span><span class="lbl">Date</span></div>
   `;
 
   renderModules(u);
