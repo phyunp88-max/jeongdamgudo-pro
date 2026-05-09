@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JEONGDAMGUDO Groupware</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200;300;400;500&family=Noto+Sans+KR:wght@200;300;400;500&family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #ECE7D8;
+    --bg-soft: #E6E1D2;
+    --paper: #F4F0E2;
+    --ink: #1C1A14;
+    --ink-soft: #5A5447;
+    --ink-faint: #948D7B;
+    --line: #D4CBB0;
+    --line-soft: #E2DBC6;
+    --danger: #8B2E2E;
+    --ok: #4A6B3E;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family: "Noto Sans KR","Inter", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    font-weight: 300;
+    letter-spacing: 0.005em;
+  }
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  input, select, textarea{font-family:inherit; outline:none}
+  .hidden{display:none !important}
+
+  /* common type */
+  .label{
+    font-family:"Inter",sans-serif; font-size: 10px; letter-spacing: .35em;
+    color: var(--ink-faint); text-transform: uppercase;
+  }
+  .small-cap{
+    font-family:"Inter",sans-serif; font-size: 11px; letter-spacing: .3em;
+    text-transform: uppercase;
+  }
+
+  /* ============================================
+     LOGIN
+  ============================================ */
+  #login-screen{
+    position:fixed; inset:0; z-index: 200;
+    display:flex; flex-direction:column;
+    justify-content: center; align-items:center;
+    background: var(--bg);
+    padding: 40px 20px;
+  }
+  #login-screen .brand{
+    text-align:center; margin-bottom: 72px;
+  }
+  #login-screen .han-big{
+    font-family:"Noto Serif KR", serif;
+    font-size: clamp(48px, 8vw, 92px);
+    font-weight: 200;
+    letter-spacing: 0.35em;
+    line-height: 1.1;
+    padding-left: 0.35em;
+  }
+  #login-screen .latin{
+    margin-top: 24px;
+    font-family:"Inter", sans-serif;
+    font-size: 12px; letter-spacing: 0.55em;
+    color: var(--ink-soft);
+  }
+  .login-card{
+    width: min(420px, 100%);
+    padding: 0 32px;
+  }
+  .login-card h2{
+    font-family:"Inter", sans-serif;
+    font-weight: 300;
+    font-size: 13px; letter-spacing:.5em;
+    text-align:center; margin-bottom: 40px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .field-group{ margin-bottom: 22px }
+  .field-group label{
+    display:block;
+    font-family:"Inter",sans-serif;
+    font-size: 10px; letter-spacing:.3em;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .field-group input{
+    width:100%; background: transparent; border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0; font-size: 15px; color: var(--ink);
+    transition: border-color .2s;
+    font-weight: 300;
+  }
+  .field-group input:focus{ border-bottom-color: var(--ink) }
+  .login-card button.login-btn{
+    width: 100%; padding: 14px; margin-top: 8px;
+    background: var(--ink); color: var(--paper);
+    font-family:"Inter",sans-serif;
+    font-size: 11px; letter-spacing:.4em;
+    transition: background .2s;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+  .login-card button.login-btn:hover{ background: var(--ink-soft) }
+  .login-card .err{
+    margin-top: 16px; font-size: 12px; color: var(--danger);
+    text-align:center; min-height: 16px; letter-spacing: .02em;
+  }
+  .login-hint{
+    margin-top: 32px; padding-top: 24px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 11px; line-height: 1.9;
+    color: var(--ink-faint); letter-spacing:.04em;
+    text-align: center;
+  }
+  .login-hint b{ color: var(--ink-soft); font-weight: 400 }
+  .login-hint code{
+    font-family:"Inter",monospace;
+    color: var(--ink-soft);
+    font-size: 11px; padding: 0 4px;
+  }
+
+  /* ============================================
+     TOPBAR
+  ============================================ */
+  .topbar{
+    position: sticky; top:0; z-index: 50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 22px 56px;
+    background: rgba(236,231,216,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .brand-mark{display:flex;align-items:baseline;gap:18px; cursor:pointer}
+  .brand-mark .han{
+    font-family:"Noto Serif KR", serif;
+    font-size: 20px; font-weight: 300; letter-spacing: 0.4em;
+  }
+  .brand-mark .latin{
+    font-family:"Inter", sans-serif;
+    font-size: 10px; letter-spacing: 0.5em; color: var(--ink-faint);
+  }
+  .nav{display:flex;gap:4px}
+  .nav button{
+    font-family:"Inter", sans-serif;
+    font-size: 11px; letter-spacing:.35em;
+    padding: 10px 20px; color: var(--ink-faint);
+    transition: color .2s;
+    text-transform: uppercase;
+  }
+  .nav button:hover{color:var(--ink-soft)}
+  .nav button.active{ color: var(--ink) }
+  .user-block{display:flex;align-items:center;gap:14px; position:relative}
+  .user-info{ text-align:right; line-height: 1.4 }
+  .user-info .name{ font-size:13px; font-weight: 400 }
+  .user-info .role{
+    font-family:"Inter",sans-serif; font-size:10px; letter-spacing:.2em;
+    color: var(--ink-faint); text-transform: uppercase;
+  }
+  .avatar{
+    width:32px;height:32px;border-radius:50%;
+    background: var(--ink); color: var(--paper);
+    display:grid;place-items:center;
+    font-family:"Inter",sans-serif; font-size:12px; font-weight: 400;
+    cursor:pointer; letter-spacing: 0;
+  }
+  .user-menu{
+    position:absolute; right:0; top: 46px;
+    background: var(--paper); border:1px solid var(--line-soft);
+    min-width: 200px; padding: 6px 0;
+    z-index: 60;
+  }
+  .user-menu button{
+    display:block; width:100%; text-align:left;
+    padding: 10px 18px; font-size:13px;
+  }
+  .user-menu button:hover{ background: var(--bg-soft) }
+  .user-menu hr{ border:none; border-top:1px solid var(--line-soft); margin: 4px 0 }
+
+  /* ============================================
+     HOME
+  ============================================ */
+  .hero{
+    padding: 120px 56px 100px;
+    text-align:center;
+  }
+  .hero .han-big{
+    font-family:"Noto Serif KR", serif;
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 200; letter-spacing: 0.35em; line-height: 1.1;
+    padding-left: 0.35em;
+  }
+  .hero .latin{
+    margin-top: 26px;
+    font-family:"Inter", sans-serif;
+    font-size: 12px; letter-spacing: 0.55em; color: var(--ink-faint);
+  }
+  .hero .greeting{
+    margin-top: 56px; font-size: 13px; color: var(--ink-soft);
+    letter-spacing:.05em; font-weight: 300;
+  }
+  .hero .stats{
+    margin-top: 48px;
+    display:flex;justify-content:center;gap:64px; flex-wrap:wrap;
+    font-family:"Inter",sans-serif;
+  }
+  .hero .stats .item{ display:flex; flex-direction:column; align-items:center; gap: 6px }
+  .hero .stats .num{
+    font-size: 26px; font-weight: 300; color: var(--ink);
+    letter-spacing: .04em;
+  }
+  .hero .stats .lbl{
+    font-size: 10px; letter-spacing:.3em; color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  .modules{
+    display:grid; grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--line-soft);
+  }
+  .mod-card{
+    padding: 64px 48px 72px;
+    cursor:pointer;
+    border-right: 1px solid var(--line-soft);
+    transition: background .3s;
+    position: relative;
+  }
+  .mod-card:last-child{border-right:none}
+  .mod-card:hover{ background: var(--bg-soft) }
+  .mod-card.disabled{ opacity:.4; cursor: not-allowed }
+  .mod-card.disabled:hover{ background: transparent }
+  .mod-card .num{
+    font-family:"Inter",sans-serif;
+    font-size: 11px; letter-spacing:.3em; color: var(--ink-faint);
+  }
+  .mod-card h3{
+    margin-top: 18px;
+    font-family:"Inter", sans-serif;
+    font-size: 24px; font-weight:300; letter-spacing:.4em;
+    text-transform: uppercase;
+  }
+  .mod-card p{
+    margin-top: 28px;
+    font-size: 13px; line-height:1.9; color: var(--ink-soft);
+    max-width: 280px;
+    font-weight: 300;
+  }
+  .mod-card .arrow{
+    margin-top: 36px;
+    font-family:"Inter",sans-serif;
+    font-size: 14px; color: var(--ink-soft);
+    transition: transform .3s;
+  }
+  .mod-card:hover .arrow{ transform: translateX(8px) }
+  .mod-card .lock{
+    display:inline-block; margin-top: 32px;
+    font-family:"Inter",sans-serif; font-size:9px; letter-spacing:.3em;
+    color: var(--ink-faint); border:1px solid var(--line); padding: 4px 10px;
+    text-transform: uppercase;
+  }
+
+  /* ============================================
+     VIEW SHELL
+  ============================================ */
+  .view{display:none; padding: 72px 56px 100px}
+  .view.active{display:block}
+  .view-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 40px; flex-wrap: wrap; gap: 18px;
+  }
+  .view-head h2{
+    font-family:"Inter", sans-serif;
+    font-size: 28px; font-weight:300; letter-spacing:.4em;
+    text-transform: uppercase;
+  }
+  .view-head .breadcrumb{
+    font-family:"Inter",sans-serif; font-size:10px; letter-spacing:.35em; color:var(--ink-faint);
+    margin-top: 10px; text-transform: uppercase;
+  }
+  .toolbar{ display:flex; gap: 8px; align-items:center; flex-wrap:wrap }
+  .btn{
+    font-family:"Inter", sans-serif;
+    font-size: 11px; letter-spacing:.3em;
+    padding: 10px 18px;
+    border: 1px solid var(--line);
+    background: transparent; color: var(--ink-soft);
+    transition: all .2s;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+  .btn:hover{ background: var(--ink); color: var(--paper); border-color: var(--ink) }
+  .btn.primary{ background: var(--ink); color: var(--paper); border-color: var(--ink) }
+  .btn.primary:hover{ background: var(--ink-soft); border-color: var(--ink-soft) }
+  .btn.danger{ color: var(--danger); border-color: var(--danger) }
+  .btn.danger:hover{ background: var(--danger); color: var(--paper) }
+  .btn.small{ padding: 6px 12px; font-size: 10px }
+  input.field, select.field, textarea.field{
+    background: var(--paper); border:1px solid var(--line);
+    padding: 10px 14px; font-size: 14px; color: var(--ink);
+    font-weight: 300;
+  }
+  input.field:focus, textarea.field:focus, select.field:focus{ border-color: var(--ink) }
+
+  /* ============================================
+     MAIL
+  ============================================ */
+  .mail-grid{
+    display:grid; grid-template-columns: 200px 1fr 1.4fr; gap: 1px;
+    background: var(--line-soft);
+    border:1px solid var(--line-soft);
+    min-height: 70vh;
+  }
+  .mail-grid > *{ background: var(--paper); padding: 24px }
+  .folder-list{display:flex;flex-direction:column;gap:2px}
+  .folder-list .label{
+    font-family:"Inter",sans-serif; font-size:10px; letter-spacing:.3em;
+    color: var(--ink-faint); margin: 6px 0 10px;
+    text-transform: uppercase;
+  }
+  .folder-list button{
+    text-align:left; padding: 10px 12px;
+    font-family:"Inter",sans-serif; font-size: 11px; letter-spacing:.3em;
+    color: var(--ink-soft);
+    display:flex; justify-content:space-between;
+    text-transform: uppercase;
+  }
+  .folder-list button:hover{ color: var(--ink) }
+  .folder-list button.active{ background: var(--ink); color: var(--paper) }
+  .folder-list button .count{
+    font-size:10px; opacity:.7;
+  }
+  .compose-btn{
+    margin-bottom: 24px; width:100%; padding: 12px;
+    font-family:"Inter",sans-serif;
+    font-size:11px; letter-spacing:.4em;
+    background: var(--ink); color: var(--paper);
+    text-transform: uppercase;
+  }
+  .mail-list{ overflow-y:auto; max-height: 70vh }
+  .mail-list .search{
+    margin-bottom: 16px;
+  }
+  .mail-list .search input{ width:100% }
+  .mail-item{
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    cursor:pointer;
+  }
+  .mail-item:hover{ background: var(--bg-soft) }
+  .mail-item.active{ background: var(--bg-soft); border-left: 2px solid var(--ink); padding-left: 10px }
+  .mail-item.unread .from{ font-weight: 500; color: var(--ink) }
+  .mail-item .row{ display:flex; justify-content:space-between; align-items:baseline }
+  .mail-item .from{ font-size:13px; color: var(--ink-soft) }
+  .mail-item .date{ font-family:"Inter",sans-serif; font-size:10px; color: var(--ink-faint); letter-spacing:.05em }
+  .mail-item .subj{ font-size:13px; margin-top: 4px; color: var(--ink); font-weight: 300 }
+  .mail-item .preview{ font-size:12px; color: var(--ink-faint); margin-top: 4px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .mail-item .badge{
+    display:inline-block; padding: 1px 6px;
+    font-family:"Inter",sans-serif;
+    font-size:9px; letter-spacing:.2em; border:1px solid var(--line);
+    margin-right: 6px; color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .mail-view .mv-head{
+    border-bottom:1px solid var(--line-soft); padding-bottom: 18px; margin-bottom: 24px;
+  }
+  .mail-view h3{ font-size: 18px; font-weight:400 }
+  .mail-view .meta{
+    margin-top: 14px; display:flex; gap: 24px; font-size:10px; color: var(--ink-faint);
+    font-family:"Inter",sans-serif; letter-spacing:.2em; flex-wrap:wrap;
+    text-transform: uppercase;
+  }
+  .mail-view .body{
+    font-size: 14px; line-height: 1.95; color: var(--ink-soft); white-space: pre-wrap;
+    font-weight: 300;
+  }
+  .empty{
+    display:grid;place-items:center;height:100%;color:var(--ink-faint);
+    font-family:"Inter",sans-serif; font-size:11px; letter-spacing:.3em;
+    text-transform: uppercase;
+  }
+
+  /* ============================================
+     LIBRARY
+  ============================================ */
+  .lib-toolbar{
+    display:flex; gap:10px; margin-bottom: 28px; align-items:center;
+  }
+  .lib-toolbar .search{ flex:1 }
+  .lib-toolbar .search input{ width:100%; padding: 12px 16px }
+  .lib-tabs{
+    display:flex;gap:0;
+    border-bottom:1px solid var(--line-soft);
+    margin-bottom: 24px; flex-wrap:wrap;
+  }
+  .lib-tabs button{
+    padding: 14px 20px;
+    font-family:"Inter",sans-serif;
+    font-size:11px; letter-spacing:.3em;
+    color:var(--ink-faint);
+    border-bottom: 1px solid transparent; margin-bottom: -1px;
+    text-transform: uppercase;
+  }
+  .lib-tabs button.active{ color: var(--ink); border-bottom-color: var(--ink) }
+  table.data{
+    width:100%; border-collapse: collapse; background: var(--paper);
+  }
+  table.data thead th{
+    text-align:left; font-family:"Inter",sans-serif; font-weight:400;
+    font-size:10px; letter-spacing:.3em; color: var(--ink-faint);
+    padding: 14px 16px; border-bottom: 1px solid var(--line-soft);
+    text-transform: uppercase;
+  }
+  table.data tbody td{
+    padding: 16px; font-size: 13px; border-bottom: 1px solid var(--line-soft);
+    vertical-align: middle; font-weight: 300;
+  }
+  table.data tbody tr:hover{ background: var(--bg-soft) }
+  .file-icon{
+    display:inline-grid; place-items:center; width: 30px; height: 34px;
+    border:1px solid var(--line-soft); margin-right: 12px;
+    font-family:"Inter",sans-serif; font-size:9px; letter-spacing:.05em;
+    color: var(--ink-faint);
+    vertical-align:middle;
+  }
+  .tag{
+    display:inline-block; padding: 2px 8px; font-size:9px; letter-spacing:.2em;
+    font-family:"Inter",sans-serif; font-weight: 400;
+    border:1px solid var(--line-soft); color: var(--ink-faint);
+    margin-right:4px; margin-bottom:2px;
+    text-transform: uppercase;
+  }
+  .row-actions{ display:flex; gap: 6px; justify-content:flex-end }
+  .row-actions button{
+    font-family:"Inter",sans-serif; font-size: 9px; letter-spacing:.25em;
+    padding: 5px 10px; border:1px solid var(--line); color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .row-actions button:hover{ color: var(--ink); border-color: var(--ink) }
+  .row-actions button.del{ color: var(--danger); border-color: var(--danger) }
+  .row-actions button.del:hover{ background: var(--danger); color: var(--paper) }
+
+  /* ============================================
+     ADMIN
+  ============================================ */
+  .admin-grid{
+    display:grid; grid-template-columns: 200px 1fr; gap: 56px;
+    align-items: flex-start;
+  }
+  .admin-side{ padding: 0 }
+  .admin-side .label{ padding: 0 0 14px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px }
+  .admin-side button{
+    width:100%; text-align:left; padding: 14px 0;
+    font-family:"Inter",sans-serif;
+    font-size:11px; letter-spacing:.3em;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--line-soft);
+    text-transform: uppercase;
+    transition: color .2s;
+  }
+  .admin-side button:hover{ color: var(--ink-soft) }
+  .admin-side button.active{ color: var(--ink) }
+  .admin-panel{ }
+  .admin-panel h3{
+    font-family:"Inter", sans-serif;
+    font-size: 16px; font-weight: 400; letter-spacing:.35em;
+    margin-bottom: 28px; text-transform: uppercase;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .panel-toolbar{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;
+    gap: 10px; flex-wrap:wrap;
+  }
+  .panel-toolbar .search{ flex:1; min-width: 180px }
+  .panel-toolbar .search input{ width:100%; padding: 9px 14px }
+  .stat-pill{
+    display:inline-block; padding: 2px 9px; font-family:"Inter",sans-serif; font-weight: 400;
+    font-size: 9px; letter-spacing:.25em;
+    text-transform: uppercase;
+  }
+  .stat-pill.active-s{ color: var(--ok); border:1px solid var(--ok) }
+  .stat-pill.inactive-s{ color: var(--ink-faint); border:1px solid var(--line) }
+  .role-badge{
+    display:inline-block; font-family:"Inter",sans-serif; font-weight: 400;
+    font-size: 9px; letter-spacing:.3em;
+    padding: 2px 9px; border:1px solid;
+    text-transform: uppercase;
+  }
+  .role-admin{ color: var(--paper); background: var(--ink); border-color: var(--ink) }
+  .role-manager{ color: var(--ink); border-color: var(--ink) }
+  .role-staff{ color: var(--ink-faint); border-color: var(--line) }
+
+  .perm-table{
+    width:100%; border-collapse: collapse; background: var(--paper);
+    margin-top: 4px;
+  }
+  .perm-table th, .perm-table td{
+    padding: 14px 12px; border-bottom: 1px solid var(--line-soft);
+    text-align: center;
+  }
+  .perm-table th{
+    font-family:"Inter",sans-serif; font-size:10px; letter-spacing:.3em;
+    color: var(--ink-faint); font-weight: 400;
+    text-transform: uppercase;
+  }
+  .perm-table th:first-child, .perm-table td:first-child{ text-align: left; width: 140px }
+  .perm-table input[type=checkbox]{ transform: scale(1.1); accent-color: var(--ink) }
+
+  .log-list{ display:flex; flex-direction:column }
+  .log-row{
+    padding: 14px 0;
+    display:grid; grid-template-columns: 130px 1fr 100px;
+    gap: 16px; align-items: center; font-size: 13px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .log-row .when{
+    font-family:"Inter",sans-serif; font-size: 10px; letter-spacing:.1em;
+    color: var(--ink-faint);
+  }
+  .log-row .who{ font-weight: 400 }
+  .log-row .what{ color: var(--ink-soft); font-weight: 300 }
+  .log-row .kind{
+    font-family:"Inter",sans-serif; font-size: 9px; letter-spacing:.3em;
+    text-align: right; color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .log-row .kind.login{ color: var(--ok) }
+  .log-row .kind.write{ color: var(--ink-soft) }
+  .log-row .kind.delete{ color: var(--danger) }
+
+  /* dashboard */
+  .dash-stats{
+    display:grid; grid-template-columns: repeat(4,1fr); gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    margin-bottom: 40px;
+  }
+  .dash-stats .st{
+    background: var(--paper); padding: 28px 24px;
+  }
+  .dash-stats .st .num{
+    font-family:"Inter",sans-serif; font-weight: 200;
+    font-size: 36px; letter-spacing: .03em;
+  }
+  .dash-stats .st .lbl{
+    font-family:"Inter",sans-serif; font-size: 10px; letter-spacing:.3em;
+    color: var(--ink-faint); margin-top: 6px;
+    text-transform: uppercase;
+  }
+  .dash-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 56px }
+  .dash-grid h4{
+    font-family:"Inter",sans-serif; font-size:11px; letter-spacing:.35em;
+    color: var(--ink-faint); font-weight: 400;
+    margin-bottom: 18px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--line-soft);
+    text-transform: uppercase;
+  }
+  .role-bar{
+    display:flex; justify-content:space-between; font-size:13px;
+    font-family:"Inter",sans-serif; font-weight: 300;
+  }
+  .role-bar .l{ text-transform: uppercase; letter-spacing: .2em; font-size: 11px }
+  .role-track{ height:3px; background:var(--line-soft); margin-top:6px }
+  .role-track > div{ height:100%; background:var(--ink) }
+
+  /* ============================================
+     MODAL
+  ============================================ */
+  .modal-bg{
+    display:none;
+    position: fixed; inset:0;
+    background: rgba(28,26,20,0.55);
+    z-index: 100;
+    align-items:center; justify-content:center;
+    padding: 24px;
+  }
+  .modal-bg.show{display:flex}
+  .modal{
+    width: min(620px, 100%); max-height: 86vh; overflow:auto;
+    background: var(--paper); border:1px solid var(--line-soft);
+    padding: 40px 44px;
+  }
+  .modal h3{
+    font-family:"Inter", sans-serif;
+    font-size: 13px; letter-spacing:.4em;
+    font-weight:400; margin-bottom: 32px;
+    text-transform: uppercase;
+    padding-bottom: 14px; border-bottom: 1px solid var(--line-soft);
+  }
+  .form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom: 18px }
+  .form-row label{
+    font-family:"Inter",sans-serif; font-size:10px; letter-spacing:.3em;
+    color:var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .form-row .field{ width:100% }
+  .form-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px }
+  .form-actions{
+    display:flex; gap:8px; justify-content:flex-end; margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .form-actions .left{ margin-right: auto }
+
+  /* Toast */
+  .toast{
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--paper);
+    padding: 12px 24px;
+    font-family:"Inter",sans-serif;
+    font-size: 11px; letter-spacing:.25em;
+    z-index: 300; opacity: 0; pointer-events:none;
+    transition: opacity .3s, transform .3s;
+    text-transform: uppercase;
+  }
+  .toast.show{ opacity: 1; transform: translateX(-50%) translateY(-8px) }
+
+  footer{
+    border-top: 1px solid var(--line-soft);
+    padding: 32px 56px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:"Inter",sans-serif; font-size:10px; letter-spacing:.35em; color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 980px){
+    .modules{grid-template-columns: 1fr; border-bottom:1px solid var(--line-soft)}
+    .mod-card{border-right:none; border-bottom:1px solid var(--line-soft)}
+    .mod-card:last-child{border-bottom:none}
+    .mail-grid{grid-template-columns: 1fr}
+    .topbar{padding: 14px 18px; flex-wrap: wrap; gap: 10px}
+    .nav{order: 3; width:100%; overflow-x:auto}
+    .hero{padding: 70px 18px 60px}
+    .view{padding: 40px 18px 60px}
+    .nav button{padding: 8px 12px; flex-shrink: 0}
+    .admin-grid{grid-template-columns: 1fr; gap: 32px}
+    .form-grid{grid-template-columns: 1fr}
+    .log-row{grid-template-columns: 1fr; gap: 4px}
+    .log-row .kind{text-align: left}
+    .dash-stats{grid-template-columns: repeat(2,1fr)}
+    .dash-grid{grid-template-columns: 1fr}
+    footer{flex-direction: column; gap: 8px; text-align:center}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================ LOGIN ============================================ -->
+<div id="login-screen">
+  <div class="brand">
+    <div class="han-big">靜 談 求 道</div>
+    <div class="latin">J E O N G D A M G U D O</div>
+  </div>
+  <form class="login-card" id="login-form">
+    <h2>S I G N&nbsp;&nbsp;I N</h2>
+    <div class="field-group">
+      <label>Username</label>
+      <input type="text" id="login-id" autocomplete="username" required/>
+    </div>
+    <div class="field-group">
+      <label>Password</label>
+      <input type="password" id="login-pw" autocomplete="current-password" required/>
+    </div>
+    <button type="submit" class="login-btn">Continue →</button>
+    <div class="err" id="login-err"></div>
+    <div class="login-hint">
+      <b>Demo</b> &nbsp;·&nbsp; admin · <code>admin / admin123</code><br/>
+      manager · <code>park / park123</code> &nbsp;·&nbsp;
+      staff · <code>kim / kim123</code>
+    </div>
+  </form>
+</div>
+
+<!-- ============================================ APP ============================================ -->
+<div id="app" class="hidden">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand-mark" data-go="home">
+      <div class="han">靜談求道</div>
+      <div class="latin">JEONGDAMGUDO</div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-view="home" class="active">Home</button>
+      <button data-view="mail">Mail</button>
+      <button data-view="library">Library</button>
+      <button data-view="admin" id="nav-admin">Admin</button>
+    </nav>
+    <div class="user-block">
+      <div class="user-info">
+        <div class="name" id="u-name"></div>
+        <div class="role" id="u-role"></div>
+      </div>
+      <div class="avatar" id="u-avatar">·</div>
+      <div class="user-menu hidden" id="user-menu">
+        <button id="menu-profile">내 정보</button>
+        <button id="menu-pw">비밀번호 변경</button>
+        <hr/>
+        <button id="menu-logout">로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <section class="view active" id="view-home" style="padding:0">
+    <div class="hero">
+      <div class="han-big">靜 談 求 道</div>
+      <div class="latin">J E O N G D A M G U D O</div>
+      <div class="greeting" id="greeting"></div>
+      <div class="stats" id="home-stats"></div>
+    </div>
+    <div class="modules" id="home-modules"></div>
+  </section>
+
+  <!-- MAIL -->
+  <section class="view" id="view-mail">
+    <div class="view-head">
+      <div>
+        <h2>Mail</h2>
+        <div class="breadcrumb">Home / Mail</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="btn-refresh-mail">Refresh</button>
+        <button class="btn primary" id="btn-compose">+ New Message</button>
+      </div>
+    </div>
+    <div class="mail-grid">
+      <aside class="folder-list">
+        <button class="compose-btn" id="btn-compose-2">Compose</button>
+        <div class="label">Folders</div>
+        <button class="active" data-folder="inbox">Inbox <span class="count" id="cnt-inbox">0</span></button>
+        <button data-folder="sent">Sent <span class="count" id="cnt-sent">0</span></button>
+        <button data-folder="draft">Drafts <span class="count">0</span></button>
+        <button data-folder="trash">Trash <span class="count">—</span></button>
+      </aside>
+      <div class="mail-list" id="mail-list">
+        <div class="search">
+          <input class="field" placeholder="Search — sender, subject" id="mail-search"/>
+        </div>
+      </div>
+      <div class="mail-view" id="mail-view">
+        <div class="empty">— Select a message —</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="view" id="view-library">
+    <div class="view-head">
+      <div>
+        <h2>Library</h2>
+        <div class="breadcrumb">Home / Library</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="btn-upload">+ Upload</button>
+      </div>
+    </div>
+    <div class="lib-toolbar">
+      <div class="search" style="flex:1">
+        <input class="field" id="lib-search" placeholder="Search — file, tag, owner" style="width:100%; padding:12px 16px"/>
+      </div>
+      <select class="field" id="lib-sort">
+        <option value="date">Sort — Recent</option>
+        <option value="name">Sort — Name</option>
+      </select>
+    </div>
+    <div class="lib-tabs" id="lib-tabs">
+      <button class="active" data-cat="ALL">All</button>
+      <button data-cat="DRAWINGS">Drawings</button>
+      <button data-cat="SPECIFICATIONS">Specifications</button>
+      <button data-cat="MINUTES">Minutes</button>
+      <button data-cat="CONTRACTS">Contracts</button>
+      <button data-cat="OTHERS">Others</button>
+    </div>
+    <table class="data">
+      <thead>
+        <tr>
+          <th style="width: 40%">Name</th>
+          <th>Category</th>
+          <th>Owner</th>
+          <th>Size</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="lib-body"></tbody>
+    </table>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="view" id="view-admin">
+    <div class="view-head">
+      <div>
+        <h2>Admin</h2>
+        <div class="breadcrumb">Home / Admin</div>
+      </div>
+    </div>
+    <div class="admin-grid">
+      <aside class="admin-side">
+        <div class="label">Admin</div>
+        <button class="active" data-admin="users">Users</button>
+        <button data-admin="roles">Roles</button>
+        <button data-admin="depts">Departments</button>
+        <button data-admin="logs">Logs</button>
+        <button data-admin="dashboard">Overview</button>
+      </aside>
+      <div class="admin-panel" id="admin-panel"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>JEONGDAMGUDO · Groupware</div>
+    <div>© 2026</div>
+  </footer>
+</div>
+
+<!-- ============================================ MODALS ============================================ -->
+<div class="modal-bg" id="modal-compose">
+  <div class="modal">
+    <h3>New Message</h3>
+    <div class="form-row"><label>To</label><input class="field" id="cm-to" placeholder="Username or email"/></div>
+    <div class="form-row"><label>Subject</label><input class="field" id="cm-subj"/></div>
+    <div class="form-row"><label>Body</label><textarea class="field" id="cm-body" rows="8"></textarea></div>
+    <div class="form-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="cm-send">Send</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-upload">
+  <div class="modal">
+    <h3>New Document</h3>
+    <div class="form-row"><label>File Name</label><input class="field" id="up-name" placeholder="floor-plan-v3.dwg"/></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Category</label>
+        <select class="field" id="up-cat">
+          <option>DRAWINGS</option><option>SPECIFICATIONS</option><option>MINUTES</option><option>CONTRACTS</option><option>OTHERS</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Size</label><input class="field" id="up-size" placeholder="2.4 MB"/></div>
+    </div>
+    <div class="form-row"><label>Tags (comma separated)</label><input class="field" id="up-tags" placeholder="cheongdam, plan"/></div>
+    <div class="form-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="up-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-user">
+  <div class="modal">
+    <h3 id="user-modal-title">User Account</h3>
+    <input type="hidden" id="usr-id"/>
+    <div class="form-grid">
+      <div class="form-row"><label>Username</label><input class="field" id="usr-username"/></div>
+      <div class="form-row"><label>Name</label><input class="field" id="usr-name"/></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Email</label><input class="field" id="usr-email" type="email"/></div>
+      <div class="form-row"><label>Phone</label><input class="field" id="usr-phone"/></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Department</label><select class="field" id="usr-dept"></select></div>
+      <div class="form-row"><label>Role</label>
+        <select class="field" id="usr-role">
+          <option value="admin">Admin</option>
+          <option value="manager">Manager</option>
+          <option value="staff">Staff</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Password (only if changing)</label><input class="field" id="usr-pw" type="text" placeholder="leave blank to keep"/></div>
+      <div class="form-row"><label>Status</label>
+        <select class="field" id="usr-status">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="usr-delete" style="margin-right:auto">Delete</button>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="usr-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-pw">
+  <div class="modal">
+    <h3>Change Password</h3>
+    <div class="form-row"><label>Current</label><input class="field" id="pw-cur" type="password"/></div>
+    <div class="form-row"><label>New</label><input class="field" id="pw-new" type="password"/></div>
+    <div class="form-row"><label>Confirm</label><input class="field" id="pw-new2" type="password"/></div>
+    <div class="form-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="pw-save">Update</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-dept">
+  <div class="modal">
+    <h3 id="dept-modal-title">Department</h3>
+    <input type="hidden" id="d-id"/>
+    <div class="form-row"><label>Name</label><input class="field" id="d-name"/></div>
+    <div class="form-row"><label>Code</label><input class="field" id="d-code" placeholder="DESIGN"/></div>
+    <div class="form-row"><label>Description</label><input class="field" id="d-desc"/></div>
+    <div class="form-actions">
+      <button class="btn danger" id="d-delete" style="margin-right:auto">Delete</button>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="d-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   STATE — localStorage backed
+============================================================ */
+const STORAGE_KEY = 'jdgd-state-v2';
+const SESSION_KEY = 'jdgd-session-v2';
+
+const DEFAULT_STATE = {
+  users: [
+    {id:1, username:'admin', password:'admin123', name:'정담', role:'admin', dept:'Admin Team', email:'admin@jdgd.co.kr', phone:'010-0000-0000', status:'active', createdAt:'2026-01-01', lastLogin:null},
+    {id:2, username:'park', password:'park123', name:'박 부장', role:'manager', dept:'Design Team', email:'park@jdgd.co.kr', phone:'010-1111-2222', status:'active', createdAt:'2026-01-05', lastLogin:null},
+    {id:3, username:'kim', password:'kim123', name:'김 실장', role:'staff', dept:'Design Team', email:'kim@jdgd.co.kr', phone:'010-2222-3333', status:'active', createdAt:'2026-01-08', lastLogin:null},
+    {id:4, username:'lee', password:'lee123', name:'이 소장', role:'manager', dept:'Site Team', email:'lee@jdgd.co.kr', phone:'010-3333-4444', status:'active', createdAt:'2026-01-10', lastLogin:null},
+    {id:5, username:'choi', password:'choi123', name:'최 차장', role:'staff', dept:'Admin Team', email:'choi@jdgd.co.kr', phone:'010-4444-5555', status:'active', createdAt:'2026-02-01', lastLogin:null},
+    {id:6, username:'jung', password:'jung123', name:'정 사원', role:'staff', dept:'Design Team', email:'jung@jdgd.co.kr', phone:'010-5555-6666', status:'inactive', createdAt:'2026-03-01', lastLogin:null},
+  ],
+  depts: [
+    {id:1, name:'Design Team', code:'DESIGN', desc:'설계 · 도면 · 인허가'},
+    {id:2, name:'Site Team', code:'SITE', desc:'시공 관리 · 현장 감독'},
+    {id:3, name:'Admin Team', code:'ADMIN', desc:'재무 · 인사 · 계약'},
+  ],
+  roles: {
+    admin:   {label:'Admin', perms:{ mail:{r:1,w:1}, library:{r:1,w:1,d:1}, admin:{r:1,w:1} }},
+    manager: {label:'Manager', perms:{ mail:{r:1,w:1}, library:{r:1,w:1,d:0}, admin:{r:0,w:0} }},
+    staff:   {label:'Staff', perms:{ mail:{r:1,w:1}, library:{r:1,w:0,d:0}, admin:{r:0,w:0} }},
+  },
+  mails: [
+    {id:1, to:2, fromName:'김 실장 · Design', folder:'inbox', subj:'청담동 한옥 1차 도면 회신 부탁드립니다', preview:'첨부드린 평면도 검토 후 회신 부탁드립니다 ...',
+     body:`박 부장님께\n\n첨부드린 청담동 한옥 1차 평면도 검토 부탁드립니다.\n특히 안채와 사랑채 사이의 동선, 그리고 마당의 비례에 대해\n현장 조건과 맞는지 의견 주시면 감사하겠습니다.\n\n금주 금요일 오후 회의 전까지 회신 부탁드립니다.\n\n— 김 실장`,
+     date:'2026-05-09', unread:true, tag:'Design'},
+    {id:2, to:2, fromName:'이 소장 · Site', folder:'inbox', subj:'[일일보고] 성수 사옥 골조 — 4F 타설 완료', preview:'금일 4층 슬라브 타설을 무사히 마쳤습니다 ...',
+     body:`박 부장님께\n\n금일 성수동 사옥 4층 슬라브 콘크리트 타설을 완료하였습니다.\n타설량 184m³, 양생 기간 7일을 두고 5월 16일 거푸집 해체 예정입니다.\n\n— 현장 이`,
+     date:'2026-05-09', unread:true, tag:'Site'},
+    {id:3, to:2, fromName:'최 차장 · Admin', folder:'inbox', subj:'5월 결재 일정 안내', preview:'이번 달 결재 마감일과 정산 일정 공유드립니다 ...',
+     body:`5월 결재 일정 안내드립니다.\n\n· 자재비 결재 마감 — 5/15(금)\n· 외주비 정산 — 5/20(수)\n· 월간 보고 — 5/30(토)\n\n— 최 차장`,
+     date:'2026-05-08', unread:true, tag:'Admin'},
+    {id:4, to:1, fromName:'System', folder:'inbox', subj:'[Admin] 신규 계정 생성 안내', preview:'새 직원 계정이 생성되었습니다 ...',
+     body:`관리자님,\n\n신규 계정이 생성되어 안내드립니다.\n계정이 생성되면 활동 로그에서 확인할 수 있습니다.`,
+     date:'2026-05-09', unread:false, tag:'System'},
+  ],
+  docs: [
+    {id:1, name:'cheongdam-floorplan-v3.dwg', cat:'DRAWINGS', ownerId:3, ownerName:'김 실장', size:'4.2 MB', date:'2026-05-09', tags:['cheongdam','plan']},
+    {id:2, name:'seongsu-structural-spec.pdf', cat:'SPECIFICATIONS', ownerId:4, ownerName:'이 소장', size:'1.8 MB', date:'2026-05-08', tags:['seongsu']},
+    {id:3, name:'2026-may-meeting-01.docx', cat:'MINUTES', ownerId:5, ownerName:'최 차장', size:'320 KB', date:'2026-05-06', tags:['meeting']},
+    {id:4, name:'cheongdam-finishes-quote.xlsx', cat:'CONTRACTS', ownerId:2, ownerName:'박 부장', size:'88 KB', date:'2026-05-05', tags:['cheongdam']},
+    {id:5, name:'electrical-subcontract.pdf', cat:'CONTRACTS', ownerId:2, ownerName:'박 부장', size:'620 KB', date:'2026-05-03', tags:['seongsu']},
+    {id:6, name:'hanok-eaves-detail.dwg', cat:'DRAWINGS', ownerId:3, ownerName:'김 실장', size:'2.1 MB', date:'2026-05-04', tags:['cheongdam','detail']},
+    {id:7, name:'weekly-progress-w18.docx', cat:'MINUTES', ownerId:5, ownerName:'최 차장', size:'180 KB', date:'2026-05-02', tags:['meeting']},
+  ],
+  logs: [
+    {id:1, when:'2026-05-09 09:12', who:'admin', what:'시스템 로그인', kind:'login'},
+    {id:2, when:'2026-05-09 09:34', who:'park', what:'시스템 로그인', kind:'login'},
+    {id:3, when:'2026-05-09 10:02', who:'kim', what:'자료실 업로드 — cheongdam-floorplan-v3', kind:'write'},
+    {id:4, when:'2026-05-09 11:18', who:'admin', what:'사용자 권한 변경 — jung (staff)', kind:'write'},
+    {id:5, when:'2026-05-08 16:40', who:'admin', what:'계정 비활성화 — jung', kind:'write'},
+  ],
+  nextId: 100,
+};
+
+let state = loadState();
+let session = loadSession();
+let currentMailFolder = 'inbox';
+let currentMailId = null;
+let currentLibCat = 'ALL';
+let currentAdminTab = 'users';
+
+function loadState(){
+  try{
+    const s = localStorage.getItem(STORAGE_KEY);
+    if(s) return JSON.parse(s);
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function loadSession(){
+  try{ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }catch(e){ return null; }
+}
+function saveSession(s){
+  if(s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  else localStorage.removeItem(SESSION_KEY);
+}
+function nextId(){ state.nextId = (state.nextId||100) + 1; return state.nextId; }
+function nowStr(){
+  const d = new Date();
+  const z = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function logEvent(who, what, kind){
+  state.logs.unshift({id: nextId(), when: nowStr(), who, what, kind});
+  state.logs = state.logs.slice(0, 200);
+  saveState();
+}
+function currentUser(){
+  if(!session) return null;
+  return state.users.find(u => u.id === session.userId);
+}
+function userPerms(u){
+  if(!u) return null;
+  return state.roles[u.role] ? state.roles[u.role].perms : state.roles.staff.perms;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   AUTH
+============================================================ */
+function showLogin(){
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+function hideLogin(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+document.getElementById('login-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const u = state.users.find(u => u.username === id && u.password === pw);
+  const errEl = document.getElementById('login-err');
+  if(!u){ errEl.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.'; return; }
+  if(u.status !== 'active'){ errEl.textContent = '비활성 계정입니다. 관리자에게 문의해 주십시오.'; return; }
+  errEl.textContent = '';
+  u.lastLogin = nowStr();
+  session = {userId: u.id, loginAt: u.lastLogin};
+  saveSession(session); saveState();
+  logEvent(u.username, '시스템 로그인', 'login');
+  enterApp();
+});
+function logout(){
+  if(session) logEvent(currentUser().username, '시스템 로그아웃', 'login');
+  session = null; saveSession(null);
+  document.getElementById('login-pw').value = '';
+  showLogin();
+}
+document.getElementById('menu-logout').addEventListener('click', logout);
+
+/* ============================================================
+   APP RENDER
+============================================================ */
+function enterApp(){
+  hideLogin();
+  const u = currentUser();
+  if(!u){ showLogin(); return; }
+  document.getElementById('u-name').textContent = u.name;
+  document.getElementById('u-role').textContent = (state.roles[u.role]?.label || u.role) + ' · ' + u.dept;
+  document.getElementById('u-avatar').textContent = (u.name || u.username).slice(0,1);
+
+  document.getElementById('greeting').textContent = `${u.name} · ${nowStr().slice(0,10).replace(/-/g,'.')}`;
+
+  const inboxCount = state.mails.filter(m => m.folder === 'inbox' && m.to === u.id && m.unread).length;
+  const docCount = state.docs.length;
+  const userCount = state.users.filter(x => x.status === 'active').length;
+  document.getElementById('home-stats').innerHTML = `
+    <div class="item"><span class="num">${inboxCount}</span><span class="lbl">New Mail</span></div>
+    <div class="item"><span class="num">${docCount}</span><span class="lbl">Documents</span></div>
+    <div class="item"><span class="num">${userCount}</span><span class="lbl">Active Users</span></div>
+  `;
+
+  renderModules(u);
+
+  const perms = userPerms(u);
+  document.getElementById('nav-admin').style.display = perms.admin.r ? '' : 'none';
+
+  document.getElementById('cnt-inbox').textContent = state.mails.filter(m => m.folder==='inbox' && m.to===u.id).length;
+  document.getElementById('cnt-sent').textContent = state.mails.filter(m => m.folder==='sent' && m.fromId===u.id).length;
+
+  go('home');
+  renderMail(); renderLib();
+}
+
+function renderModules(u){
+  const perms = userPerms(u);
+  const el = document.getElementById('home-modules');
+  const items = [
+    {key:'mail', num:'01', title:'Mail', desc:'사내 메일과 일일 보고.', allow: perms.mail.r},
+    {key:'library', num:'02', title:'Library', desc:'도면 · 시방서 · 회의록 · 계약서.', allow: perms.library.r},
+    {key:'admin', num:'03', title:'Admin', desc:'계정 · 권한 · 부서 · 활동 로그.', allow: perms.admin.r},
+  ];
+  el.innerHTML = items.map(it => `
+    <div class="mod-card ${it.allow?'':'disabled'}" data-go="${it.allow?it.key:''}">
+      <div class="num">${it.num}</div>
+      <h3>${it.title}</h3>
+      <p>${it.desc}</p>
+      ${it.allow ? '<div class="arrow">→</div>' : '<div class="lock">Permission Required</div>'}
+    </div>
+  `).join('');
+  el.querySelectorAll('.mod-card[data-go]').forEach(c => {
+    if(c.dataset.go) c.addEventListener('click', () => go(c.dataset.go));
+  });
+}
+
+const navBtns = document.querySelectorAll('#nav button');
+const views = document.querySelectorAll('.view');
+function go(name){
+  const u = currentUser();
+  const perms = userPerms(u);
+  if(name === 'admin' && !perms.admin.r){ toast('권한이 없습니다'); return; }
+  if(name === 'mail' && !perms.mail.r){ toast('권한이 없습니다'); return; }
+  if(name === 'library' && !perms.library.r){ toast('권한이 없습니다'); return; }
+  navBtns.forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  views.forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  if(name === 'admin') renderAdmin();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+navBtns.forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
+document.querySelector('.brand-mark').addEventListener('click', () => go('home'));
+
+const userMenu = document.getElementById('user-menu');
+document.getElementById('u-avatar').addEventListener('click', e => {
+  e.stopPropagation();
+  userMenu.classList.toggle('hidden');
+});
+document.addEventListener('click', () => userMenu.classList.add('hidden'));
+
+/* ============================================================
+   MAIL
+============================================================ */
+function renderMail(){
+  const u = currentUser(); if(!u) return;
+  const list = document.getElementById('mail-list');
+  const q = document.getElementById('mail-search').value.trim().toLowerCase();
+  const search = list.querySelector('.search');
+  list.innerHTML = ''; list.appendChild(search);
+  const mails = state.mails
+    .filter(m => {
+      if(currentMailFolder === 'inbox') return m.folder==='inbox' && m.to===u.id;
+      if(currentMailFolder === 'sent') return m.folder==='sent' && m.fromId===u.id;
+      return false;
+    })
+    .filter(m => !q || (m.fromName + m.subj + (m.preview||'')).toLowerCase().includes(q))
+    .sort((a,b) => b.date.localeCompare(a.date));
+  if(mails.length === 0){
+    const e = document.createElement('div'); e.className='empty'; e.style.height='50vh'; e.textContent='— No messages —';
+    list.appendChild(e); return;
+  }
+  mails.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'mail-item' + (m.unread?' unread':'') + (currentMailId===m.id?' active':'');
+    el.innerHTML = `
+      <div class="row"><div class="from">${m.fromName}</div><div class="date">${m.date.slice(5)}</div></div>
+      <div class="subj">${m.tag?`<span class="badge">${m.tag}</span>`:''}${m.subj}</div>
+      <div class="preview">${m.preview||''}</div>
+    `;
+    el.addEventListener('click', () => { currentMailId=m.id; m.unread=false; saveState(); renderMail(); renderMailView(); });
+    list.appendChild(el);
+  });
+}
+function renderMailView(){
+  const m = state.mails.find(x => x.id===currentMailId);
+  const v = document.getElementById('mail-view');
+  if(!m){ v.innerHTML = '<div class="empty">— Select a message —</div>'; return; }
+  v.innerHTML = `
+    <div class="mv-head">
+      <h3>${m.subj}</h3>
+      <div class="meta">
+        <span>From · ${m.fromName}</span>
+        <span>Date · ${m.date}</span>
+        ${m.tag?`<span>Tag · ${m.tag}</span>`:''}
+      </div>
+    </div>
+    <div class="body">${m.body||''}</div>
+    <div style="margin-top:32px;display:flex;gap:8px">
+      <button class="btn primary" id="btn-reply">Reply</button>
+      <button class="btn">Forward</button>
+    </div>
+  `;
+  document.getElementById('btn-reply').addEventListener('click', () => {
+    document.getElementById('cm-to').value = m.fromName;
+    document.getElementById('cm-subj').value = 'RE: ' + m.subj;
+    document.getElementById('cm-body').value = `\n\n--- 원문 ---\n${m.body||''}`;
+    openModal('modal-compose');
+  });
+}
+document.querySelectorAll('.folder-list button[data-folder]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.folder-list button[data-folder]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    currentMailFolder = b.dataset.folder; currentMailId = null;
+    renderMail(); renderMailView();
+  });
+});
+document.getElementById('mail-search').addEventListener('input', renderMail);
+document.getElementById('btn-refresh-mail').addEventListener('click', () => { renderMail(); toast('Refreshed'); });
+document.getElementById('btn-compose').addEventListener('click', () => {
+  document.getElementById('cm-to').value = '';
+  document.getElementById('cm-subj').value = '';
+  document.getElementById('cm-body').value = '';
+  openModal('modal-compose');
+});
+document.getElementById('btn-compose-2').addEventListener('click', () => document.getElementById('btn-compose').click());
+document.getElementById('cm-send').addEventListener('click', () => {
+  const u = currentUser();
+  const to = document.getElementById('cm-to').value.trim();
+  const subj = document.getElementById('cm-subj').value.trim();
+  const body = document.getElementById('cm-body').value;
+  if(!to || !subj){ toast('수신자와 제목을 입력해 주세요'); return; }
+  const target = state.users.find(x => x.username === to || x.email === to || x.name === to || (x.name + ' · ' + x.dept) === to);
+  state.mails.unshift({
+    id: nextId(),
+    fromId: u.id, fromName: `${u.name} · ${u.dept}`,
+    to: target ? target.id : null,
+    folder: 'sent', subj, body, preview: body.slice(0,80),
+    date: nowStr().slice(0,10), unread: false, tag: u.dept.split(' ')[0]
+  });
+  if(target){
+    state.mails.unshift({
+      id: nextId(),
+      fromId: u.id, fromName: `${u.name} · ${u.dept}`,
+      to: target.id,
+      folder: 'inbox', subj, body, preview: body.slice(0,80),
+      date: nowStr().slice(0,10), unread: true, tag: u.dept.split(' ')[0]
+    });
+  }
+  saveState(); logEvent(u.username, `메일 발송 — ${subj}`, 'write');
+  closeModal('modal-compose'); toast('Message sent');
+  renderMail();
+});
+
+/* ============================================================
+   LIBRARY
+============================================================ */
+function renderLib(){
+  const u = currentUser(); if(!u) return;
+  const perms = userPerms(u);
+  document.getElementById('btn-upload').style.display = perms.library.w ? '' : 'none';
+  const q = document.getElementById('lib-search').value.trim().toLowerCase();
+  const sort = document.getElementById('lib-sort').value;
+  let docs = state.docs.filter(d => currentLibCat === 'ALL' || d.cat === currentLibCat);
+  if(q) docs = docs.filter(d => (d.name + d.ownerName + (d.tags||[]).join(' ')).toLowerCase().includes(q));
+  docs.sort((a,b) => sort==='name' ? a.name.localeCompare(b.name) : b.date.localeCompare(a.date));
+  const tbody = document.getElementById('lib-body');
+  tbody.innerHTML = '';
+  docs.forEach(d => {
+    const ext = (d.name.split('.').pop()||'').toUpperCase().slice(0,3);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <span class="file-icon">${ext}</span>
+        ${d.name}
+        ${d.tags && d.tags.length ? `<div style="margin-top:6px;margin-left:42px">${d.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>` : ''}
+      </td>
+      <td>${d.cat}</td>
+      <td>${d.ownerName}</td>
+      <td>${d.size}</td>
+      <td style="font-family:Inter,sans-serif;font-size:11px;color:var(--ink-faint);letter-spacing:.05em">${d.date}</td>
+      <td><div class="row-actions">
+        <button data-act="dl" data-id="${d.id}">Download</button>
+        ${perms.library.d || d.ownerId===u.id ? `<button class="del" data-act="del" data-id="${d.id}">Delete</button>` : ''}
+      </div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  if(docs.length === 0){
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--ink-faint);letter-spacing:.3em;font-family:Inter,sans-serif;font-size:11px;text-transform:uppercase">— No documents —</td></tr>`;
+  }
+  tbody.querySelectorAll('button[data-act]').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = +b.dataset.id;
+      if(b.dataset.act === 'dl') toast('Download started');
+      else if(b.dataset.act === 'del'){
+        if(!confirm('이 자료를 삭제하시겠습니까?')) return;
+        const d = state.docs.find(x => x.id===id);
+        state.docs = state.docs.filter(x => x.id!==id);
+        saveState(); logEvent(currentUser().username, `자료 삭제 — ${d?.name||id}`, 'delete');
+        renderLib(); toast('Deleted');
+      }
+    });
+  });
+}
+document.querySelectorAll('#lib-tabs button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#lib-tabs button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    currentLibCat = b.dataset.cat;
+    renderLib();
+  });
+});
+document.getElementById('lib-search').addEventListener('input', renderLib);
+document.getElementById('lib-sort').addEventListener('change', renderLib);
+document.getElementById('btn-upload').addEventListener('click', () => {
+  document.getElementById('up-name').value = '';
+  document.getElementById('up-size').value = '';
+  document.getElementById('up-tags').value = '';
+  openModal('modal-upload');
+});
+document.getElementById('up-save').addEventListener('click', () => {
+  const u = currentUser();
+  const name = document.getElementById('up-name').value.trim();
+  if(!name){ toast('파일명을 입력해 주세요'); return; }
+  const cat = document.getElementById('up-cat').value;
+  const size = document.getElementById('up-size').value.trim() || '— KB';
+  const tags = document.getElementById('up-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  state.docs.unshift({
+    id: nextId(), name, cat, ownerId: u.id, ownerName: u.name, size,
+    date: nowStr().slice(0,10), tags
+  });
+  saveState(); logEvent(u.username, `자료 업로드 — ${name}`, 'write');
+  closeModal('modal-upload'); toast('Uploaded'); renderLib();
+});
+
+/* ============================================================
+   ADMIN
+============================================================ */
+const adminBtns = document.querySelectorAll('.admin-side button');
+adminBtns.forEach(b => b.addEventListener('click', () => {
+  adminBtns.forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  currentAdminTab = b.dataset.admin;
+  renderAdmin();
+}));
+
+function renderAdmin(){
+  const u = currentUser();
+  if(!userPerms(u).admin.r){ go('home'); return; }
+  const panel = document.getElementById('admin-panel');
+  if(currentAdminTab === 'users') panel.innerHTML = adminUsersHTML();
+  else if(currentAdminTab === 'roles') panel.innerHTML = adminRolesHTML();
+  else if(currentAdminTab === 'depts') panel.innerHTML = adminDeptsHTML();
+  else if(currentAdminTab === 'logs') panel.innerHTML = adminLogsHTML();
+  else if(currentAdminTab === 'dashboard') panel.innerHTML = adminDashboardHTML();
+  bindAdminEvents();
+}
+
+function adminUsersHTML(){
+  const rows = state.users.map(u => `
+    <tr>
+      <td><b style="font-weight:400">${u.name}</b><br/><small style="color:var(--ink-faint);font-family:Inter,sans-serif;letter-spacing:.05em">${u.username}</small></td>
+      <td>${u.dept}</td>
+      <td><span class="role-badge role-${u.role}">${state.roles[u.role]?.label||u.role}</span></td>
+      <td><small style="font-family:Inter,sans-serif;letter-spacing:.02em">${u.email}</small></td>
+      <td><span class="stat-pill ${u.status==='active'?'active-s':'inactive-s'}">${u.status}</span></td>
+      <td><small style="color:var(--ink-faint);font-family:Inter,sans-serif;letter-spacing:.05em">${u.lastLogin||'—'}</small></td>
+      <td><div class="row-actions">
+        <button data-act="edit-user" data-id="${u.id}">Edit</button>
+        <button data-act="toggle-user" data-id="${u.id}">${u.status==='active'?'Deactivate':'Activate'}</button>
+      </div></td>
+    </tr>
+  `).join('');
+  return `
+    <h3>Users</h3>
+    <div class="panel-toolbar">
+      <div class="search"><input class="field" id="admin-user-search" placeholder="Search — name, username, dept"/></div>
+      <button class="btn primary" data-act="new-user">+ New User</button>
+    </div>
+    <table class="data">
+      <thead><tr><th>Name</th><th>Department</th><th>Role</th><th>Email</th><th>Status</th><th>Last Login</th><th></th></tr></thead>
+      <tbody id="admin-user-tbody">${rows}</tbody>
+    </table>
+  `;
+}
+
+function adminRolesHTML(){
+  const features = [
+    {key:'mail', label:'Mail'},
+    {key:'library', label:'Library'},
+    {key:'admin', label:'Admin'},
+  ];
+  const ops = [
+    {key:'r', label:'Read'},
+    {key:'w', label:'Write'},
+    {key:'d', label:'Delete'},
+  ];
+  const head = `<tr><th>Role / Feature</th>${features.map(f=>`<th colspan="3">${f.label}</th>`).join('')}</tr>
+                <tr><th></th>${features.map(()=>ops.map(o=>`<th>${o.label}</th>`).join('')).join('')}</tr>`;
+  const rows = Object.entries(state.roles).map(([roleKey, role]) => {
+    const cells = features.map(f => ops.map(o => {
+      const checked = role.perms[f.key] && role.perms[f.key][o.key];
+      return `<td><input type="checkbox" data-role="${roleKey}" data-f="${f.key}" data-o="${o.key}" ${checked?'checked':''}/></td>`;
+    }).join('')).join('');
+    return `<tr><td><span class="role-badge role-${roleKey}">${role.label||roleKey}</span></td>${cells}</tr>`;
+  }).join('');
+  return `
+    <h3>Roles</h3>
+    <p style="font-size:12px;color:var(--ink-faint);line-height:1.8;margin-bottom:24px;letter-spacing:.02em">
+      각 역할이 기능별로 갖는 열람 · 작성 · 삭제 권한을 설정합니다. 변경은 즉시 반영됩니다.
+    </p>
+    <table class="perm-table">
+      <thead>${head}</thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function adminDeptsHTML(){
+  const rows = state.depts.map(d => {
+    const count = state.users.filter(u => u.dept === d.name).length;
+    return `<tr>
+      <td><b style="font-weight:400">${d.name}</b></td>
+      <td><code style="font-family:Inter,monospace;color:var(--ink-faint);font-size:11px">${d.code}</code></td>
+      <td>${d.desc || ''}</td>
+      <td>${count}</td>
+      <td><div class="row-actions">
+        <button data-act="edit-dept" data-id="${d.id}">Edit</button>
+        <button class="del" data-act="del-dept" data-id="${d.id}">Delete</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  return `
+    <h3>Departments</h3>
+    <div class="panel-toolbar">
+      <div></div>
+      <button class="btn primary" data-act="new-dept">+ New Department</button>
+    </div>
+    <table class="data">
+      <thead><tr><th>Name</th><th>Code</th><th>Description</th><th>Members</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function adminLogsHTML(){
+  const rows = state.logs.slice(0,80).map(l => `
+    <div class="log-row">
+      <div class="when">${l.when}</div>
+      <div><span class="who">${l.who}</span> <span class="what">— ${l.what}</span></div>
+      <div class="kind ${l.kind}">${l.kind}</div>
+    </div>
+  `).join('');
+  return `
+    <h3>Activity Log</h3>
+    <p style="font-size:12px;color:var(--ink-faint);line-height:1.8;margin-bottom:24px;letter-spacing:.02em">
+      Showing the most recent ${Math.min(state.logs.length,80)} entries · ${state.logs.length} total.
+    </p>
+    <div class="log-list">${rows || '<div class="log-row"><div class="when">—</div><div>No logs</div><div></div></div>'}</div>
+    <div style="margin-top:18px">
+      <button class="btn small" data-act="clear-logs">Clear All Logs</button>
+    </div>
+  `;
+}
+
+function adminDashboardHTML(){
+  const total = state.users.length;
+  const active = state.users.filter(u => u.status==='active').length;
+  const byRole = {admin:0, manager:0, staff:0};
+  state.users.forEach(u => byRole[u.role] = (byRole[u.role]||0)+1);
+  const recent = state.logs.slice(0,5).map(l => `<li style="padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:13px"><span style="font-weight:400">${l.who}</span> <span style="color:var(--ink-soft);font-weight:300">— ${l.what}</span><div style="font-family:Inter,sans-serif;font-size:9px;color:var(--ink-faint);letter-spacing:.15em;margin-top:3px;text-transform:uppercase">${l.when}</div></li>`).join('');
+  return `
+    <h3>Overview</h3>
+    <div class="dash-stats">
+      <div class="st"><div class="num">${total}</div><div class="lbl">Total Users</div></div>
+      <div class="st"><div class="num" style="color:var(--ok)">${active}</div><div class="lbl">Active</div></div>
+      <div class="st"><div class="num">${state.docs.length}</div><div class="lbl">Documents</div></div>
+      <div class="st"><div class="num">${state.depts.length}</div><div class="lbl">Departments</div></div>
+    </div>
+    <div class="dash-grid">
+      <div>
+        <h4>Role Distribution</h4>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          ${['admin','manager','staff'].map(r => {
+            const c = byRole[r]||0;
+            const pct = total ? Math.round(c/total*100) : 0;
+            return `<div>
+              <div class="role-bar"><span class="l">${state.roles[r]?.label||r}</span><span>${c}</span></div>
+              <div class="role-track"><div style="width:${pct}%"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div>
+        <h4>Recent Activity</h4>
+        <ul style="list-style:none">${recent || '<li style="padding:10px 0;color:var(--ink-faint)">No logs</li>'}</ul>
+      </div>
+    </div>
+  `;
+}
+
+function bindAdminEvents(){
+  const panel = document.getElementById('admin-panel');
+
+  panel.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const act = btn.dataset.act;
+      if(act === 'new-user') openUserModal(null);
+      else if(act === 'edit-user') openUserModal(+btn.dataset.id);
+      else if(act === 'toggle-user'){
+        const u = state.users.find(x => x.id === +btn.dataset.id);
+        u.status = u.status==='active' ? 'inactive' : 'active';
+        saveState(); logEvent(currentUser().username, `${u.status==='active'?'활성화':'비활성화'} — ${u.username}`, 'write');
+        renderAdmin(); toast('Status updated');
+      }
+      else if(act === 'new-dept') openDeptModal(null);
+      else if(act === 'edit-dept') openDeptModal(+btn.dataset.id);
+      else if(act === 'del-dept'){
+        const d = state.depts.find(x => x.id === +btn.dataset.id);
+        const cnt = state.users.filter(u => u.dept === d.name).length;
+        if(cnt > 0){ toast(`소속 인원이 있어 삭제할 수 없습니다 (${cnt})`); return; }
+        if(!confirm('이 부서를 삭제하시겠습니까?')) return;
+        state.depts = state.depts.filter(x => x.id !== d.id);
+        saveState(); logEvent(currentUser().username, `부서 삭제 — ${d.name}`, 'delete');
+        renderAdmin(); toast('Deleted');
+      }
+      else if(act === 'clear-logs'){
+        if(!confirm('모든 로그를 삭제하시겠습니까?')) return;
+        state.logs = []; saveState(); renderAdmin(); toast('Logs cleared');
+      }
+    });
+  });
+
+  panel.querySelectorAll('input[type=checkbox][data-role]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const r = cb.dataset.role, f = cb.dataset.f, o = cb.dataset.o;
+      if(!state.roles[r].perms[f]) state.roles[r].perms[f] = {};
+      state.roles[r].perms[f][o] = cb.checked ? 1 : 0;
+      saveState();
+      logEvent(currentUser().username, `권한 변경 — ${r}.${f}.${o} = ${cb.checked?'ON':'OFF'}`, 'write');
+      toast('Permission updated');
+      const u = currentUser();
+      const perms = userPerms(u);
+      document.getElementById('nav-admin').style.display = perms.admin.r ? '' : 'none';
+    });
+  });
+
+  const searchEl = document.getElementById('admin-user-search');
+  if(searchEl){
+    searchEl.addEventListener('input', () => {
+      const q = searchEl.value.toLowerCase().trim();
+      document.querySelectorAll('#admin-user-tbody tr').forEach(tr => {
+        tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  }
+}
+
+function fillDeptOptions(){
+  const sel = document.getElementById('usr-dept');
+  sel.innerHTML = state.depts.map(d => `<option>${d.name}</option>`).join('');
+}
+function openUserModal(id){
+  fillDeptOptions();
+  const u = id ? state.users.find(x => x.id===id) : null;
+  document.getElementById('user-modal-title').textContent = u ? 'Edit User' : 'New User';
+  document.getElementById('usr-id').value = u?.id || '';
+  document.getElementById('usr-username').value = u?.username || '';
+  document.getElementById('usr-name').value = u?.name || '';
+  document.getElementById('usr-email').value = u?.email || '';
+  document.getElementById('usr-phone').value = u?.phone || '';
+  document.getElementById('usr-dept').value = u?.dept || state.depts[0]?.name;
+  document.getElementById('usr-role').value = u?.role || 'staff';
+  document.getElementById('usr-pw').value = '';
+  document.getElementById('usr-status').value = u?.status || 'active';
+  document.getElementById('usr-delete').style.display = u ? '' : 'none';
+  openModal('modal-user');
+}
+document.getElementById('usr-save').addEventListener('click', () => {
+  const id = document.getElementById('usr-id').value;
+  const username = document.getElementById('usr-username').value.trim();
+  const name = document.getElementById('usr-name').value.trim();
+  if(!username || !name){ toast('아이디와 이름은 필수입니다'); return; }
+  if(state.users.some(u => u.username === username && String(u.id) !== id)){ toast('이미 사용 중인 아이디입니다'); return; }
+  const data = {
+    username, name,
+    email: document.getElementById('usr-email').value.trim(),
+    phone: document.getElementById('usr-phone').value.trim(),
+    dept: document.getElementById('usr-dept').value,
+    role: document.getElementById('usr-role').value,
+    status: document.getElementById('usr-status').value,
+  };
+  const pw = document.getElementById('usr-pw').value;
+  if(id){
+    const u = state.users.find(x => x.id === +id);
+    Object.assign(u, data);
+    if(pw) u.password = pw;
+    logEvent(currentUser().username, `계정 수정 — ${u.username}`, 'write');
+  } else {
+    if(!pw){ toast('새 계정은 비밀번호가 필요합니다'); return; }
+    state.users.push({id: nextId(), ...data, password: pw, createdAt: nowStr().slice(0,10), lastLogin: null});
+    logEvent(currentUser().username, `계정 생성 — ${username}`, 'write');
+  }
+  saveState(); closeModal('modal-user'); renderAdmin(); toast('Saved');
+});
+document.getElementById('usr-delete').addEventListener('click', () => {
+  const id = +document.getElementById('usr-id').value;
+  if(id === currentUser().id){ toast('본인 계정은 삭제할 수 없습니다'); return; }
+  if(!confirm('이 계정을 삭제하시겠습니까?')) return;
+  const u = state.users.find(x => x.id === id);
+  state.users = state.users.filter(x => x.id !== id);
+  saveState(); logEvent(currentUser().username, `계정 삭제 — ${u.username}`, 'delete');
+  closeModal('modal-user'); renderAdmin(); toast('Deleted');
+});
+
+function openDeptModal(id){
+  const d = id ? state.depts.find(x => x.id===id) : null;
+  document.getElementById('dept-modal-title').textContent = d ? 'Edit Department' : 'New Department';
+  document.getElementById('d-id').value = d?.id || '';
+  document.getElementById('d-name').value = d?.name || '';
+  document.getElementById('d-code').value = d?.code || '';
+  document.getElementById('d-desc').value = d?.desc || '';
+  document.getElementById('d-delete').style.display = d ? '' : 'none';
+  openModal('modal-dept');
+}
+document.getElementById('d-save').addEventListener('click', () => {
+  const id = document.getElementById('d-id').value;
+  const name = document.getElementById('d-name').value.trim();
+  const code = document.getElementById('d-code').value.trim();
+  const desc = document.getElementById('d-desc').value.trim();
+  if(!name){ toast('부서명을 입력해 주세요'); return; }
+  if(id){
+    const d = state.depts.find(x => x.id === +id);
+    const oldName = d.name;
+    Object.assign(d, {name, code, desc});
+    if(oldName !== name) state.users.forEach(u => { if(u.dept === oldName) u.dept = name; });
+    logEvent(currentUser().username, `부서 수정 — ${name}`, 'write');
+  } else {
+    state.depts.push({id: nextId(), name, code, desc});
+    logEvent(currentUser().username, `부서 생성 — ${name}`, 'write');
+  }
+  saveState(); closeModal('modal-dept'); renderAdmin(); toast('Saved');
+});
+document.getElementById('d-delete').addEventListener('click', () => {
+  const btn = document.querySelector('#admin-panel button[data-act=del-dept][data-id="'+document.getElementById('d-id').value+'"]');
+  if(btn) btn.click();
+  closeModal('modal-dept');
+});
+
+document.getElementById('menu-pw').addEventListener('click', () => {
+  document.getElementById('pw-cur').value=''; document.getElementById('pw-new').value=''; document.getElementById('pw-new2').value='';
+  openModal('modal-pw');
+});
+document.getElementById('pw-save').addEventListener('click', () => {
+  const u = currentUser();
+  const cur = document.getElementById('pw-cur').value;
+  const n1 = document.getElementById('pw-new').value;
+  const n2 = document.getElementById('pw-new2').value;
+  if(u.password !== cur){ toast('현재 비밀번호가 일치하지 않습니다'); return; }
+  if(!n1 || n1 !== n2){ toast('새 비밀번호가 일치하지 않습니다'); return; }
+  if(n1.length < 4){ toast('비밀번호는 4자 이상이어야 합니다'); return; }
+  u.password = n1; saveState();
+  logEvent(u.username, '비밀번호 변경', 'write');
+  closeModal('modal-pw'); toast('Password updated');
+});
+document.getElementById('menu-profile').addEventListener('click', () => {
+  if(userPerms(currentUser()).admin.r){
+    go('admin'); openUserModal(currentUser().id);
+  } else {
+    toast('관리자만 프로필 편집이 가능합니다');
+  }
+});
+
+function openModal(id){ document.getElementById(id).classList.add('show') }
+function closeModal(id){ document.getElementById(id).classList.remove('show') }
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => { if(e.target === bg) bg.classList.remove('show'); });
+  bg.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => bg.classList.remove('show')));
+});
+
+if(session && currentUser()){ enterApp(); }
+else { showLogin(); }
+</script>
+
+</body>
+</html>

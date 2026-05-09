@@ -1,0 +1,26 @@
+{
+  "name": "JEONGDAMGUDO Groupware",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "Web Preview",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+  "postAttachCommand": {
+    "server": "python3 -m http.server 8080"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  }
+}
