@@ -61,10 +61,20 @@ The frontend then uses JWT auth and all data syncs across users in real time. De
 
 ## External Mail (Phase 4)
 
-Two paths for connecting the company mail (NAS MailPlus) to the groupware:
+Two paths for connecting external mail (ECOUNT, Naver Works, MailPlus, etc.) to the groupware:
 
-- **Fast (iframe embed)**: Set `MAILPLUS_URL` in `index.html` to your MailPlus webmail URL. An "External" tab appears in the Mail screen and embeds the full MailPlus UI.
-- **Custom UI (later)**: Stub in [`nas-mail/`](nas-mail/) folder. Run a Node.js IMAP/SMTP REST proxy on the NAS itself, then the groupware's own minimal UI can speak external mail too.
+### A. iframe embed (fastest — for any provider that allows iframing)
+```js
+const MAILPLUS_URL = "https://mail.worksmobile.com/";
+```
+"External" tab embeds the full webmail UI.
+
+### B. Custom UI via IMAP/SMTP proxy (works with ECOUNT and any IMAP server)
+Deploy [`nas-mail/`](nas-mail/) as a Docker container on the NAS, then:
+```js
+const MAIL_API_BASE = "https://mail-api.jdgd.co.kr";
+```
+The "External" tab now uses the groupware's own minimal UI to read/send mail through the proxy. Each user sets their mail credentials once (browser-only, never stored on server).
 
 ## Synology NAS Integration (Library)
 

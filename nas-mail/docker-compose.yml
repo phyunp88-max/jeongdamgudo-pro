@@ -1,0 +1,21 @@
+services:
+  mail-proxy:
+    build: .
+    container_name: jdgd-mail-proxy
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - IMAP_HOST=${IMAP_HOST}
+      - IMAP_PORT=${IMAP_PORT:-993}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - ALLOWED_ORIGIN=${ALLOWED_ORIGIN:-*}
+      - IMAP_TLS=${IMAP_TLS:-strict}
+      - SMTP_TLS=${SMTP_TLS:-strict}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

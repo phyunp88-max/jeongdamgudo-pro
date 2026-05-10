@@ -737,9 +737,33 @@
         <button class="btn primary" id="btn-compose">+ New Message</button>
       </div>
     </div>
-    <!-- External mail (MailPlus iframe) -->
-    <div id="mail-external" style="display:none;border:1px solid var(--line-soft);height:75vh">
-      <iframe id="mailplus-frame" style="width:100%;height:100%;border:none;background:var(--paper)" title="MailPlus"></iframe>
+    <!-- External mail (iframe webmail OR custom IMAP UI) -->
+    <div id="mail-external" style="display:none">
+      <!-- iframe path (MailPlus / Naver Works / MailStation) -->
+      <div id="mail-external-iframe" style="display:none;border:1px solid var(--line-soft);height:75vh">
+        <iframe id="mailplus-frame" style="width:100%;height:100%;border:none;background:var(--paper)" title="External Mail"></iframe>
+      </div>
+      <!-- IMAP path (ECOUNT etc. via mail-api proxy) — reuses .mail-grid -->
+      <div id="mail-external-imap" class="mail-grid" style="display:none">
+        <aside class="folder-list" id="ext-folders">
+          <button class="compose-btn" id="ext-compose-btn">Compose</button>
+          <div class="label">Folders</div>
+          <button class="active" data-ext-folder="INBOX">Inbox</button>
+          <button data-ext-folder="Sent">Sent</button>
+          <button data-ext-folder="Trash">Trash</button>
+          <div class="label" style="margin-top:auto">Account</div>
+          <button id="ext-creds-btn" style="font-size:11px;letter-spacing:.2em">계정 설정</button>
+          <button id="ext-signout-btn" style="font-size:11px;letter-spacing:.2em;color:var(--danger)">로그아웃</button>
+        </aside>
+        <div class="mail-list" id="ext-list">
+          <div class="search">
+            <input class="field" placeholder="Search" id="ext-search"/>
+          </div>
+        </div>
+        <div class="mail-view" id="ext-view">
+          <div class="empty">— Select a message —</div>
+        </div>
+      </div>
     </div>
     <div class="mail-grid" id="mail-internal">
       <aside class="folder-list">
@@ -913,6 +937,22 @@
   </div>
 </div>
 
+<div class="modal-bg" id="modal-mailcreds">
+  <div class="modal">
+    <h3>Mail Account</h3>
+    <p style="font-size:12px;color:var(--ink-faint);line-height:1.7;margin-bottom:18px;letter-spacing:.02em">
+      외부 메일 서비스(ECOUNT 등) 자격증명을 입력해 주세요. 브라우저에만 저장되며 서버에는 전송되지 않습니다.<br/>
+      매 요청 시 암호화 채널(HTTPS)로 메일 프록시에 전달됩니다.
+    </p>
+    <div class="form-row"><label>Email Address</label><input class="field" id="mc-user" placeholder="you@jdgd.co.kr"/></div>
+    <div class="form-row"><label>Password</label><input class="field" id="mc-pass" type="password"/></div>
+    <div class="form-actions">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn primary" id="mc-save">Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-pw">
   <div class="modal">
     <h3>Change Password</h3>
@@ -956,13 +996,49 @@
    MAILPLUS_URL   — Optional: MailPlus webmail URL to embed for
                     external email (Phase 4 fast path).
 ============================================================ */
-const API_BASE     = ''; // e.g. 'https://jeongdamgudo-api.YOURSUB.workers.dev'
-const NAS_API_BASE = ''; // e.g. 'https://jeongdamgudo-nas.YOURSUB.workers.dev'
-const NAS_API_KEY  = ''; // shared secret for the NAS Worker
-const MAILPLUS_URL = ''; // e.g. 'https://mail.jdgd.co.kr/mailplus/'
+const API_BASE      = ''; // e.g. 'https://jeongdamgudo-api.YOURSUB.workers.dev'
+const NAS_API_BASE  = ''; // e.g. 'https://jeongdamgudo-nas.YOURSUB.workers.dev'
+const NAS_API_KEY   = ''; // shared secret for the NAS Worker
+const MAILPLUS_URL  = ''; // iframe webmail (Naver Works/MailPlus/MailStation)
+const MAIL_API_BASE = ''; // e.g. 'https://mail-api.jdgd.co.kr' — ECOUNT IMAP/SMTP proxy
 const useAPI = !!API_BASE;
 const useNAS = !!NAS_API_BASE;
 const useMailPlus = !!MAILPLUS_URL;
+const useMailAPI = !!MAIL_API_BASE;
+
+const MAIL_CREDS_KEY = 'jdgd-mail-creds-v1';
+
+function loadMailCreds(){
+  try{
+    const s = localStorage.getItem(MAIL_CREDS_KEY);
+    if(!s) return null;
+    return JSON.parse(atob(s));
+  }catch(e){ return null; }
+}
+function saveMailCreds(user, pass){
+  localStorage.setItem(MAIL_CREDS_KEY, btoa(JSON.stringify({ user, pass })));
+}
+function clearMailCreds(){ localStorage.removeItem(MAIL_CREDS_KEY); }
+
+async function mailFetch(path, options = {}){
+  if(!MAIL_API_BASE) throw new Error('MAIL_API_BASE not configured');
+  const creds = loadMailCreds();
+  if(!creds) { const e = new Error('mail credentials missing'); e.code = 'NO_CREDS'; throw e; }
+  const headers = { ...(options.headers || {}), 'X-Mail-User': creds.user, 'X-Mail-Pass': creds.pass };
+  let body = options.body;
+  if(body && !(body instanceof FormData) && typeof body !== 'string'){
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(body);
+  }
+  const r = await fetch(MAIL_API_BASE + path, { ...options, headers, body });
+  if(r.status === 401){ const e = new Error('mail auth failed'); e.code = 'BAD_CREDS'; throw e; }
+  if(!r.ok){
+    let msg = 'mail ' + r.status;
+    try{ const j = await r.json(); if(j.error) msg = j.error; }catch{}
+    throw new Error(msg);
+  }
+  return r.json();
+}
 
 const TOKEN_KEY = 'jdgd-jwt-v1';
 
@@ -1385,24 +1461,206 @@ function renderMailView(){
     openModal('modal-compose');
   });
 }
-/* Mail mode toggle (Internal D1 / External MailPlus iframe) */
-if(useMailPlus){
+/* Mail mode toggle (Internal D1 / External iframe-or-IMAP) */
+if(useMailPlus || useMailAPI){
   document.getElementById('btn-mail-external').style.display = '';
 }
 document.querySelectorAll('#mail-tabs button[data-mail-mode]').forEach(b => {
-  b.addEventListener('click', () => {
+  b.addEventListener('click', async () => {
     document.querySelectorAll('#mail-tabs button[data-mail-mode]').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     const mode = b.dataset.mailMode;
     document.getElementById('mail-internal').style.display = mode === 'internal' ? '' : 'none';
     document.getElementById('mail-external').style.display = mode === 'external' ? '' : 'none';
-    document.getElementById('btn-compose').style.display = mode === 'internal' ? '' : 'none';
-    document.getElementById('btn-refresh-mail').style.display = mode === 'internal' ? '' : 'none';
+    document.getElementById('btn-refresh-mail').style.display = '';
+    document.getElementById('btn-compose').style.display = '';
+
     if(mode === 'external'){
-      const fr = document.getElementById('mailplus-frame');
-      if(!fr.src && MAILPLUS_URL) fr.src = MAILPLUS_URL;
+      const useImap = useMailAPI;
+      document.getElementById('mail-external-imap').style.display = useImap ? 'grid' : 'none';
+      document.getElementById('mail-external-iframe').style.display = useImap ? 'none' : '';
+      if(useImap){
+        if(!loadMailCreds()){ openMailCredsModal(); return; }
+        await loadExternalInbox();
+      } else if(useMailPlus){
+        const fr = document.getElementById('mailplus-frame');
+        if(!fr.src && MAILPLUS_URL) fr.src = MAILPLUS_URL;
+      }
     }
   });
+});
+
+/* ---------- External IMAP mail (ECOUNT etc.) ---------- */
+let extFolder = 'INBOX';
+let extMessages = [];
+let extCurrentUid = null;
+
+function openMailCredsModal(){
+  const cur = loadMailCreds();
+  document.getElementById('mc-user').value = cur?.user || '';
+  document.getElementById('mc-pass').value = '';
+  openModal('modal-mailcreds');
+}
+document.getElementById('mc-save').addEventListener('click', async () => {
+  const u = document.getElementById('mc-user').value.trim();
+  const p = document.getElementById('mc-pass').value;
+  if(!u || !p){ toast('이메일과 비밀번호를 입력해 주세요'); return; }
+  saveMailCreds(u, p);
+  try{
+    toast('Connecting...');
+    await mailFetch('/mail/login', { method:'POST' });
+    closeModal('modal-mailcreds'); toast('Connected');
+    await loadExternalInbox();
+  }catch(e){
+    clearMailCreds();
+    toast('연결 실패: ' + e.message);
+  }
+});
+
+async function loadExternalInbox(){
+  const list = document.getElementById('ext-list');
+  const search = list.querySelector('.search');
+  list.innerHTML = ''; list.appendChild(search);
+  list.insertAdjacentHTML('beforeend',
+    '<div class="empty" style="height:50vh">— Loading from mail server —</div>');
+  try{
+    const r = await mailFetch(`/mail/inbox?folder=${encodeURIComponent(extFolder)}&limit=80`);
+    extMessages = r.messages || [];
+    renderExternalList();
+  }catch(e){
+    if(e.code === 'NO_CREDS' || e.code === 'BAD_CREDS'){ openMailCredsModal(); return; }
+    list.innerHTML = ''; list.appendChild(search);
+    list.insertAdjacentHTML('beforeend',
+      `<div class="empty" style="height:50vh;color:var(--danger);font-size:12px">${e.message}</div>`);
+  }
+}
+function renderExternalList(){
+  const list = document.getElementById('ext-list');
+  const q = (document.getElementById('ext-search').value || '').trim().toLowerCase();
+  const search = list.querySelector('.search');
+  list.innerHTML = ''; list.appendChild(search);
+
+  const items = extMessages.filter(m => {
+    if(!q) return true;
+    const blob = (m.subject + ' ' + (m.from?.name||'') + ' ' + (m.from?.address||'')).toLowerCase();
+    return blob.includes(q);
+  });
+  if(items.length === 0){
+    list.insertAdjacentHTML('beforeend', '<div class="empty" style="height:40vh">— No messages —</div>');
+    return;
+  }
+  items.forEach(m => {
+    const date = m.date ? new Date(m.date) : null;
+    const datestr = date ? `${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}` : '';
+    const fromLabel = m.from?.name || m.from?.address || '?';
+    const el = document.createElement('div');
+    el.className = 'mail-item' + (m.unread?' unread':'') + (extCurrentUid===m.uid?' active':'');
+    el.innerHTML = `
+      <div class="row"><div class="from">${fromLabel}</div><div class="date">${datestr}</div></div>
+      <div class="subj">${m.subject || '(no subject)'}</div>
+      <div class="preview">${(m.from?.address || '').replace(/</g,'&lt;')}</div>
+    `;
+    el.addEventListener('click', () => openExternalMessage(m.uid));
+    list.appendChild(el);
+  });
+}
+async function openExternalMessage(uid){
+  extCurrentUid = uid;
+  const v = document.getElementById('ext-view');
+  v.innerHTML = '<div class="empty">— Loading —</div>';
+  try{
+    const m = await mailFetch(`/mail/message/${uid}?folder=${encodeURIComponent(extFolder)}`);
+    const fromAddr = m.from?.address || '';
+    const fromName = m.from?.name || fromAddr;
+    const date = m.date ? new Date(m.date).toLocaleString('ko-KR') : '';
+    const toLine = (m.to||[]).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
+    const bodyHTML = m.html
+      ? `<iframe sandbox srcdoc="${(m.html||'').replace(/"/g,'&quot;')}" style="width:100%;height:50vh;border:none;background:var(--paper)"></iframe>`
+      : `<div class="body" style="white-space:pre-wrap">${(m.text||'').replace(/</g,'&lt;')}</div>`;
+    v.innerHTML = `
+      <div class="mv-head">
+        <h3>${m.subject || '(no subject)'}</h3>
+        <div class="meta">
+          <span>From · ${fromName}${fromAddr && fromName!==fromAddr ? ' &lt;'+fromAddr+'&gt;' : ''}</span>
+          <span>To · ${toLine}</span>
+          <span>Date · ${date}</span>
+        </div>
+      </div>
+      ${bodyHTML}
+      ${(m.attachments||[]).length ? `<div style="margin-top:18px"><div class="label" style="margin-bottom:8px">Attachments</div>${
+        m.attachments.map(a => `<span class="tag">${a.filename||'file'} · ${(a.size/1024).toFixed(0)}KB</span>`).join('')
+      }</div>` : ''}
+      <div style="margin-top:32px;display:flex;gap:8px">
+        <button class="btn primary" id="ext-reply-btn">Reply</button>
+        <button class="btn danger" id="ext-del-btn">Delete</button>
+      </div>
+    `;
+    // mark read in local cache
+    const local = extMessages.find(x => x.uid === uid);
+    if(local) local.unread = false;
+    renderExternalList();
+    document.getElementById('ext-reply-btn').addEventListener('click', () => {
+      document.getElementById('cm-to').value = fromAddr;
+      document.getElementById('cm-subj').value = 'RE: ' + (m.subject || '');
+      document.getElementById('cm-body').value = `\n\n--- Original ---\n${m.text || ''}`;
+      window._composeExternal = true;
+      openModal('modal-compose');
+    });
+    document.getElementById('ext-del-btn').addEventListener('click', async () => {
+      if(!confirm('이 메일을 삭제하시겠습니까?')) return;
+      try{
+        await mailFetch(`/mail/message/${uid}?folder=${encodeURIComponent(extFolder)}`, { method:'DELETE' });
+        extMessages = extMessages.filter(x => x.uid !== uid);
+        extCurrentUid = null;
+        v.innerHTML = '<div class="empty">— Deleted —</div>';
+        renderExternalList();
+        toast('Deleted');
+      }catch(e){ toast('Delete failed: ' + e.message); }
+    });
+  }catch(e){
+    if(e.code === 'BAD_CREDS'){ openMailCredsModal(); return; }
+    v.innerHTML = `<div class="empty" style="color:var(--danger);font-size:12px">${e.message}</div>`;
+  }
+}
+
+document.querySelectorAll('#ext-folders button[data-ext-folder]').forEach(b => {
+  b.addEventListener('click', async () => {
+    document.querySelectorAll('#ext-folders button[data-ext-folder]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    extFolder = b.dataset.extFolder;
+    extCurrentUid = null;
+    document.getElementById('ext-view').innerHTML = '<div class="empty">— Select a message —</div>';
+    await loadExternalInbox();
+  });
+});
+document.getElementById('ext-search').addEventListener('input', renderExternalList);
+document.getElementById('ext-creds-btn').addEventListener('click', openMailCredsModal);
+document.getElementById('ext-signout-btn').addEventListener('click', () => {
+  if(!confirm('메일 계정 정보를 이 브라우저에서 삭제하시겠습니까?')) return;
+  clearMailCreds();
+  extMessages = []; extCurrentUid = null;
+  document.getElementById('ext-list').innerHTML = '';
+  document.getElementById('ext-view').innerHTML = '<div class="empty">— Sign in to view mail —</div>';
+  openMailCredsModal();
+});
+document.getElementById('ext-compose-btn').addEventListener('click', () => {
+  document.getElementById('cm-to').value = '';
+  document.getElementById('cm-subj').value = '';
+  document.getElementById('cm-body').value = '';
+  window._composeExternal = true;
+  openModal('modal-compose');
+});
+
+/* Refresh button refreshes whichever mail mode is active */
+const _origRefresh = document.getElementById('btn-refresh-mail');
+_origRefresh.addEventListener('click', async () => {
+  const externalActive = document.getElementById('mail-external').style.display !== 'none';
+  if(externalActive && useMailAPI){
+    await loadExternalInbox();
+    toast('Refreshed');
+  } else {
+    renderMail(); toast('Refreshed');
+  }
 });
 
 document.querySelectorAll('.folder-list button[data-folder]').forEach(b => {
@@ -1414,7 +1672,7 @@ document.querySelectorAll('.folder-list button[data-folder]').forEach(b => {
   });
 });
 document.getElementById('mail-search').addEventListener('input', renderMail);
-document.getElementById('btn-refresh-mail').addEventListener('click', () => { renderMail(); toast('Refreshed'); });
+// (refresh handler is registered later, branching by active mode)
 document.getElementById('btn-compose').addEventListener('click', () => {
   document.getElementById('cm-to').value = '';
   document.getElementById('cm-subj').value = '';
@@ -1428,6 +1686,21 @@ document.getElementById('cm-send').addEventListener('click', async () => {
   const subj = document.getElementById('cm-subj').value.trim();
   const body = document.getElementById('cm-body').value;
   if(!to || !subj){ toast('수신자와 제목을 입력해 주세요'); return; }
+
+  // External (IMAP/SMTP) mail compose path
+  if(window._composeExternal && useMailAPI){
+    try{
+      toast('Sending...');
+      await mailFetch('/mail/send', { method:'POST', body: { to, subject: subj, body } });
+      window._composeExternal = false;
+      closeModal('modal-compose'); toast('Sent');
+    }catch(e){
+      if(e.code === 'BAD_CREDS' || e.code === 'NO_CREDS'){ openMailCredsModal(); return; }
+      toast('Send failed: ' + e.message);
+    }
+    return;
+  }
+  window._composeExternal = false;
 
   if(useAPI){
     try{
