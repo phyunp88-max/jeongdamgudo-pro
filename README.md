@@ -44,6 +44,28 @@ In the browser console:
 localStorage.clear(); location.reload();
 ```
 
+## Production Backend (Cloudflare Worker + D1)
+
+For real multi-user use, the frontend can run against a centralized backend that stores users, departments, permissions, messages, and logs in Cloudflare D1 — see [`api/README.md`](api/README.md).
+
+**To enable:**
+1. Deploy the API Worker (see `api/README.md`)
+2. Run `POST /api/init` once to create the first admin
+3. In `index.html` set:
+   ```js
+   const API_BASE = 'https://jeongdamgudo-api.YOURSUB.workers.dev';
+   ```
+4. Commit & redeploy
+
+The frontend then uses JWT auth and all data syncs across users in real time. Demo mode (API_BASE empty) keeps everything in localStorage.
+
+## External Mail (Phase 4)
+
+Two paths for connecting the company mail (NAS MailPlus) to the groupware:
+
+- **Fast (iframe embed)**: Set `MAILPLUS_URL` in `index.html` to your MailPlus webmail URL. An "External" tab appears in the Mail screen and embeds the full MailPlus UI.
+- **Custom UI (later)**: Stub in [`nas-mail/`](nas-mail/) folder. Run a Node.js IMAP/SMTP REST proxy on the NAS itself, then the groupware's own minimal UI can speak external mail too.
+
 ## Synology NAS Integration (Library)
 
 The Library section can be backed by a real Synology NAS instead of localStorage.

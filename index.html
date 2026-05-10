@@ -209,10 +209,16 @@
     display:flex;justify-content:center;gap:80px; flex-wrap:wrap;
     font-family:"Inter",sans-serif;
   }
-  .hero .stats .item{ display:flex; flex-direction:column; align-items:center; gap: 6px }
+  .hero .stats .item{ display:flex; flex-direction:column; align-items:center; gap: 8px }
   .hero .stats .num{
     font-size: 26px; font-weight: 300; color: var(--ink);
     letter-spacing: .04em;
+  }
+  .hero .stats .num.text{
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    font-weight: 300;
+    letter-spacing: .02em;
   }
   .hero .stats .lbl{
     font-size: 10px; letter-spacing:.3em; color: var(--ink-faint);
@@ -723,11 +729,19 @@
         <div class="breadcrumb">Home / Mail</div>
       </div>
       <div class="toolbar">
+        <div id="mail-tabs" style="display:flex;gap:0;border:1px solid var(--line);margin-right:10px">
+          <button class="btn small active" data-mail-mode="internal" style="border:none">Internal</button>
+          <button class="btn small" data-mail-mode="external" id="btn-mail-external" style="display:none;border:none;border-left:1px solid var(--line)">External</button>
+        </div>
         <button class="btn" id="btn-refresh-mail">Refresh</button>
         <button class="btn primary" id="btn-compose">+ New Message</button>
       </div>
     </div>
-    <div class="mail-grid">
+    <!-- External mail (MailPlus iframe) -->
+    <div id="mail-external" style="display:none;border:1px solid var(--line-soft);height:75vh">
+      <iframe id="mailplus-frame" style="width:100%;height:100%;border:none;background:var(--paper)" title="MailPlus"></iframe>
+    </div>
+    <div class="mail-grid" id="mail-internal">
       <aside class="folder-list">
         <button class="compose-btn" id="btn-compose-2">Compose</button>
         <div class="label">Folders</div>
@@ -931,15 +945,47 @@
 
 <script>
 /* ============================================================
-   NAS BACKEND CONFIG
+   BACKEND CONFIG
    ----------------------------------------------------------------
-   To enable Synology NAS-backed Library, set these to your
-   Cloudflare Worker URL and (optional) shared API key.
-   Leave NAS_API_BASE empty to use the localStorage demo mode.
+   API_BASE       — JEONGDAMGUDO API Worker URL.  When set, all
+                    auth/users/depts/perms/messages/logs go through
+                    the centralized backend (Cloudflare D1).
+                    Leave empty for localStorage demo mode.
+   NAS_API_BASE   — Optional NAS proxy Worker for the Library
+                    (file uploads/downloads).
+   MAILPLUS_URL   — Optional: MailPlus webmail URL to embed for
+                    external email (Phase 4 fast path).
 ============================================================ */
+const API_BASE     = ''; // e.g. 'https://jeongdamgudo-api.YOURSUB.workers.dev'
 const NAS_API_BASE = ''; // e.g. 'https://jeongdamgudo-nas.YOURSUB.workers.dev'
-const NAS_API_KEY  = ''; // e.g. 'your-shared-secret'
+const NAS_API_KEY  = ''; // shared secret for the NAS Worker
+const MAILPLUS_URL = ''; // e.g. 'https://mail.jdgd.co.kr/mailplus/'
+const useAPI = !!API_BASE;
 const useNAS = !!NAS_API_BASE;
+const useMailPlus = !!MAILPLUS_URL;
+
+const TOKEN_KEY = 'jdgd-jwt-v1';
+
+async function apiFetch(path, options = {}) {
+  if (!API_BASE) throw new Error('API_BASE not configured');
+  const headers = { ...(options.headers || {}) };
+  const tk = localStorage.getItem(TOKEN_KEY);
+  if (tk) headers['Authorization'] = 'Bearer ' + tk;
+  let body = options.body;
+  if (body && !(body instanceof FormData) && typeof body !== 'string') {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(body);
+  }
+  const r = await fetch(API_BASE + path, { ...options, headers, body });
+  if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); session = null; saveSession(null); }
+  if (!r.ok) {
+    let msg = 'API ' + r.status;
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch(e){}
+    throw new Error(msg);
+  }
+  if (r.status === 204) return null;
+  return r.json();
+}
 
 async function nasFetch(path, init = {}) {
   const headers = { ...(init.headers || {}) };
@@ -953,7 +999,7 @@ async function nasFetch(path, init = {}) {
 }
 
 /* ============================================================
-   STATE — localStorage backed
+   STATE — localStorage backed (also used as in-memory cache when API_BASE set)
 ============================================================ */
 const STORAGE_KEY = 'jdgd-state-v2';
 const SESSION_KEY = 'jdgd-session-v2';
@@ -1072,12 +1118,40 @@ function hideLogin(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
 }
-document.getElementById('login-form').addEventListener('submit', e => {
+document.getElementById('login-form').addEventListener('submit', async e => {
   e.preventDefault();
   const id = document.getElementById('login-id').value.trim();
   const pw = document.getElementById('login-pw').value;
-  const u = state.users.find(u => u.username === id && u.password === pw);
   const errEl = document.getElementById('login-err');
+
+  if(useAPI){
+    try{
+      errEl.textContent = '';
+      const r = await fetch(API_BASE + '/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ username: id, password: pw })
+      });
+      if(!r.ok){
+        const j = await r.json().catch(()=>({}));
+        if(r.status === 403) errEl.textContent = '비활성 계정입니다.';
+        else errEl.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+        return;
+      }
+      const { token, user } = await r.json();
+      localStorage.setItem(TOKEN_KEY, token);
+      session = { userId: user.id, loginAt: nowStr() };
+      saveSession(session);
+      await refreshAllFromAPI();
+      enterApp();
+    }catch(err){
+      errEl.textContent = '서버 연결 실패: ' + err.message;
+    }
+    return;
+  }
+
+  // === Demo mode ===
+  const u = state.users.find(u => u.username === id && u.password === pw);
   if(!u){ errEl.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.'; return; }
   if(u.status !== 'active'){ errEl.textContent = '비활성 계정입니다. 관리자에게 문의해 주십시오.'; return; }
   errEl.textContent = '';
@@ -1087,9 +1161,82 @@ document.getElementById('login-form').addEventListener('submit', e => {
   logEvent(u.username, '시스템 로그인', 'login');
   enterApp();
 });
+
+/* Pull users/depts/roles/docs/messages/logs from API into local state cache. */
+async function refreshAllFromAPI(){
+  try{
+    const me = await apiFetch('/api/auth/me');
+    // Replace state with API data
+    const [usersRes, deptsRes, permsRes] = await Promise.all([
+      apiFetch('/api/users').catch(() => ({ users: [] })),
+      apiFetch('/api/depts').catch(() => ({ depts: [] })),
+      apiFetch('/api/permissions').catch(() => ({ perms: state.roles })),
+    ]);
+    state.users = usersRes.users.map(u => ({ ...u, lastLogin: u.last_login }));
+    state.depts = deptsRes.depts.map(d => ({ ...d, desc: d.description }));
+    // Build state.roles from perms map
+    if(permsRes.perms){
+      const newRoles = {};
+      for(const [r, feats] of Object.entries(permsRes.perms)){
+        newRoles[r] = {
+          label: state.roles[r]?.label || r,
+          perms: feats,
+        };
+      }
+      state.roles = newRoles;
+    }
+
+    // Messages — pull both folders
+    try{
+      const inb = await apiFetch('/api/messages?folder=inbox');
+      const snt = await apiFetch('/api/messages?folder=sent');
+      state.mails = [
+        ...inb.messages.map(m => ({
+          id: m.id, to: m.to_id, fromId: m.from_id,
+          fromName: (m.from_name || '시스템') + (m.from_dept ? ' · ' + m.from_dept : ''),
+          folder: 'inbox', subj: m.subject, body: m.body, preview: (m.body||'').slice(0,80),
+          date: (m.created_at||'').slice(0,10), unread: !m.read_at, tag: m.tag,
+        })),
+        ...snt.messages.map(m => ({
+          id: m.id, to: m.to_id, fromId: m.from_id,
+          fromName: (m.to_name || '?') + (m.to_dept ? ' · ' + m.to_dept : ''),
+          folder: 'sent', subj: m.subject, body: m.body, preview: (m.body||'').slice(0,80),
+          date: (m.created_at||'').slice(0,10), unread: false, tag: m.tag,
+        })),
+      ];
+    }catch(e){ state.mails = []; }
+
+    // Logs (only if admin)
+    try{
+      const logsRes = await apiFetch('/api/logs?limit=80');
+      state.logs = logsRes.logs.map(l => ({
+        id: l.id, when: (l.created_at||'').replace('T',' ').slice(0,16),
+        who: l.username, what: l.action, kind: l.kind,
+      }));
+    }catch(e){ /* non-admin: ignore */ }
+
+    // Documents (when not using NAS Worker, use API metadata)
+    if(!useNAS){
+      try{
+        const docsRes = await apiFetch('/api/documents');
+        state.docs = docsRes.docs.map(d => ({
+          id: d.id, name: d.name, cat: d.category,
+          ownerId: d.owner_id, ownerName: d.owner_name,
+          size: d.size ? d.size + ' B' : '—',
+          date: (d.created_at||'').slice(0,10), tags: d.tags || [], path: d.nas_path,
+        }));
+      }catch(e){ state.docs = []; }
+    }
+
+  }catch(e){
+    console.error('refreshAllFromAPI failed', e);
+    toast && toast('데이터 로드 실패: ' + e.message);
+  }
+}
 function logout(){
-  if(session) logEvent(currentUser().username, '시스템 로그아웃', 'login');
+  if(session && currentUser()) logEvent(currentUser().username, '시스템 로그아웃', 'login');
   session = null; saveSession(null);
+  if(useAPI) localStorage.removeItem(TOKEN_KEY);
   document.getElementById('login-pw').value = '';
   showLogin();
 }
@@ -1109,8 +1256,8 @@ function enterApp(){
   const inboxCount = state.mails.filter(m => m.folder === 'inbox' && m.to === u.id && m.unread).length;
   document.getElementById('home-stats').innerHTML = `
     <div class="item"><span class="num">${inboxCount}</span><span class="lbl">New Mail</span></div>
-    <div class="item"><span class="num">${u.name}</span><span class="lbl">User</span></div>
-    <div class="item"><span class="num">${nowStr().slice(0,10).replace(/-/g,'.')}</span><span class="lbl">Date</span></div>
+    <div class="item"><span class="num text">${u.name}</span><span class="lbl">User</span></div>
+    <div class="item"><span class="num text">${nowStr().slice(0,10).replace(/-/g,'.')}</span><span class="lbl">Date</span></div>
   `;
 
   renderModules(u);
@@ -1198,7 +1345,17 @@ function renderMail(){
       <div class="subj">${m.tag?`<span class="badge">${m.tag}</span>`:''}${m.subj}</div>
       <div class="preview">${m.preview||''}</div>
     `;
-    el.addEventListener('click', () => { currentMailId=m.id; m.unread=false; saveState(); renderMail(); renderMailView(); });
+    el.addEventListener('click', async () => {
+      currentMailId=m.id;
+      const wasUnread = m.unread;
+      m.unread=false;
+      if(useAPI && wasUnread && currentMailFolder === 'inbox'){
+        apiFetch(`/api/messages/${m.id}/read`, { method:'PATCH' }).catch(() => {});
+      } else {
+        saveState();
+      }
+      renderMail(); renderMailView();
+    });
     list.appendChild(el);
   });
 }
@@ -1228,6 +1385,26 @@ function renderMailView(){
     openModal('modal-compose');
   });
 }
+/* Mail mode toggle (Internal D1 / External MailPlus iframe) */
+if(useMailPlus){
+  document.getElementById('btn-mail-external').style.display = '';
+}
+document.querySelectorAll('#mail-tabs button[data-mail-mode]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#mail-tabs button[data-mail-mode]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const mode = b.dataset.mailMode;
+    document.getElementById('mail-internal').style.display = mode === 'internal' ? '' : 'none';
+    document.getElementById('mail-external').style.display = mode === 'external' ? '' : 'none';
+    document.getElementById('btn-compose').style.display = mode === 'internal' ? '' : 'none';
+    document.getElementById('btn-refresh-mail').style.display = mode === 'internal' ? '' : 'none';
+    if(mode === 'external'){
+      const fr = document.getElementById('mailplus-frame');
+      if(!fr.src && MAILPLUS_URL) fr.src = MAILPLUS_URL;
+    }
+  });
+});
+
 document.querySelectorAll('.folder-list button[data-folder]').forEach(b => {
   b.addEventListener('click', () => {
     document.querySelectorAll('.folder-list button[data-folder]').forEach(x => x.classList.remove('active'));
@@ -1245,12 +1422,22 @@ document.getElementById('btn-compose').addEventListener('click', () => {
   openModal('modal-compose');
 });
 document.getElementById('btn-compose-2').addEventListener('click', () => document.getElementById('btn-compose').click());
-document.getElementById('cm-send').addEventListener('click', () => {
+document.getElementById('cm-send').addEventListener('click', async () => {
   const u = currentUser();
   const to = document.getElementById('cm-to').value.trim();
   const subj = document.getElementById('cm-subj').value.trim();
   const body = document.getElementById('cm-body').value;
   if(!to || !subj){ toast('수신자와 제목을 입력해 주세요'); return; }
+
+  if(useAPI){
+    try{
+      await apiFetch('/api/messages', { method:'POST', body:{ to_username: to, subject: subj, body, tag: u.dept } });
+      await refreshAllFromAPI();
+      closeModal('modal-compose'); toast('Message sent'); renderMail();
+    }catch(e){ toast('Failed: ' + e.message); }
+    return;
+  }
+
   const target = state.users.find(x => x.username === to || x.email === to || x.name === to || (x.name + ' · ' + x.dept) === to);
   state.mails.unshift({
     id: nextId(),
@@ -1632,7 +1819,15 @@ function bindAdminEvents(){
       else if(act === 'edit-user') openUserModal(+btn.dataset.id);
       else if(act === 'toggle-user'){
         const u = state.users.find(x => x.id === +btn.dataset.id);
-        u.status = u.status==='active' ? 'inactive' : 'active';
+        const newStatus = u.status==='active' ? 'inactive' : 'active';
+        if(useAPI){
+          try{
+            await apiFetch(`/api/users/${u.id}`, { method:'PATCH', body: { status: newStatus } });
+            await refreshAllFromAPI(); renderAdmin(); toast('Status updated');
+          }catch(e){ toast('Failed: ' + e.message); }
+          return;
+        }
+        u.status = newStatus;
         saveState(); logEvent(currentUser().username, `${u.status==='active'?'활성화':'비활성화'} — ${u.username}`, 'write');
         renderAdmin(); toast('Status updated');
       }
@@ -1643,6 +1838,13 @@ function bindAdminEvents(){
         const cnt = state.users.filter(u => u.dept === d.name).length;
         if(cnt > 0){ toast(`소속 인원이 있어 삭제할 수 없습니다 (${cnt})`); return; }
         if(!confirm('이 부서를 삭제하시겠습니까?')) return;
+        if(useAPI){
+          try{
+            await apiFetch(`/api/depts/${d.id}`, { method:'DELETE' });
+            await refreshAllFromAPI(); renderAdmin(); toast('Deleted');
+          }catch(e){ toast('Failed: ' + e.message); }
+          return;
+        }
         state.depts = state.depts.filter(x => x.id !== d.id);
         saveState(); logEvent(currentUser().username, `부서 삭제 — ${d.name}`, 'delete');
         renderAdmin(); toast('Deleted');
@@ -1655,13 +1857,24 @@ function bindAdminEvents(){
   });
 
   panel.querySelectorAll('input[type=checkbox][data-role]').forEach(cb => {
-    cb.addEventListener('change', () => {
+    cb.addEventListener('change', async () => {
       const r = cb.dataset.role, f = cb.dataset.f, o = cb.dataset.o;
       if(!state.roles[r].perms[f]) state.roles[r].perms[f] = {};
       state.roles[r].perms[f][o] = cb.checked ? 1 : 0;
-      saveState();
-      logEvent(currentUser().username, `권한 변경 — ${r}.${f}.${o} = ${cb.checked?'ON':'OFF'}`, 'write');
-      toast('Permission updated');
+
+      if(useAPI){
+        try{
+          await apiFetch('/api/permissions', {
+            method: 'PATCH',
+            body: [{ role: r, feature: f, op: o, allowed: cb.checked ? 1 : 0 }]
+          });
+          toast('Permission updated');
+        }catch(e){ toast('Failed: ' + e.message); cb.checked = !cb.checked; return; }
+      } else {
+        saveState();
+        logEvent(currentUser().username, `권한 변경 — ${r}.${f}.${o} = ${cb.checked?'ON':'OFF'}`, 'write');
+        toast('Permission updated');
+      }
       const u = currentUser();
       const perms = userPerms(u);
       document.getElementById('nav-admin').style.display = perms.admin.r ? '' : 'none';
@@ -1699,12 +1912,11 @@ function openUserModal(id){
   document.getElementById('usr-delete').style.display = u ? '' : 'none';
   openModal('modal-user');
 }
-document.getElementById('usr-save').addEventListener('click', () => {
+document.getElementById('usr-save').addEventListener('click', async () => {
   const id = document.getElementById('usr-id').value;
   const username = document.getElementById('usr-username').value.trim();
   const name = document.getElementById('usr-name').value.trim();
   if(!username || !name){ toast('아이디와 이름은 필수입니다'); return; }
-  if(state.users.some(u => u.username === username && String(u.id) !== id)){ toast('이미 사용 중인 아이디입니다'); return; }
   const data = {
     username, name,
     email: document.getElementById('usr-email').value.trim(),
@@ -1714,6 +1926,26 @@ document.getElementById('usr-save').addEventListener('click', () => {
     status: document.getElementById('usr-status').value,
   };
   const pw = document.getElementById('usr-pw').value;
+
+  if(useAPI){
+    try{
+      if(id){
+        const body = { ...data };
+        if(pw) body.password = pw;
+        delete body.username; // username immutable through PATCH
+        await apiFetch(`/api/users/${id}`, { method:'PATCH', body });
+      } else {
+        if(!pw){ toast('새 계정은 비밀번호가 필요합니다'); return; }
+        await apiFetch('/api/users', { method:'POST', body: { ...data, password: pw } });
+      }
+      await refreshAllFromAPI();
+      closeModal('modal-user'); renderAdmin(); toast('Saved');
+    }catch(e){ toast('Failed: ' + e.message); }
+    return;
+  }
+
+  // Demo mode
+  if(state.users.some(u => u.username === username && String(u.id) !== id)){ toast('이미 사용 중인 아이디입니다'); return; }
   if(id){
     const u = state.users.find(x => x.id === +id);
     Object.assign(u, data);
@@ -1726,10 +1958,20 @@ document.getElementById('usr-save').addEventListener('click', () => {
   }
   saveState(); closeModal('modal-user'); renderAdmin(); toast('Saved');
 });
-document.getElementById('usr-delete').addEventListener('click', () => {
+document.getElementById('usr-delete').addEventListener('click', async () => {
   const id = +document.getElementById('usr-id').value;
   if(id === currentUser().id){ toast('본인 계정은 삭제할 수 없습니다'); return; }
   if(!confirm('이 계정을 삭제하시겠습니까?')) return;
+
+  if(useAPI){
+    try{
+      await apiFetch(`/api/users/${id}`, { method:'DELETE' });
+      await refreshAllFromAPI();
+      closeModal('modal-user'); renderAdmin(); toast('Deleted');
+    }catch(e){ toast('Failed: ' + e.message); }
+    return;
+  }
+
   const u = state.users.find(x => x.id === id);
   state.users = state.users.filter(x => x.id !== id);
   saveState(); logEvent(currentUser().username, `계정 삭제 — ${u.username}`, 'delete');
@@ -1746,12 +1988,24 @@ function openDeptModal(id){
   document.getElementById('d-delete').style.display = d ? '' : 'none';
   openModal('modal-dept');
 }
-document.getElementById('d-save').addEventListener('click', () => {
+document.getElementById('d-save').addEventListener('click', async () => {
   const id = document.getElementById('d-id').value;
   const name = document.getElementById('d-name').value.trim();
   const code = document.getElementById('d-code').value.trim();
   const desc = document.getElementById('d-desc').value.trim();
   if(!name){ toast('부서명을 입력해 주세요'); return; }
+
+  if(useAPI){
+    try{
+      const body = { name, code, description: desc };
+      if(id) await apiFetch(`/api/depts/${id}`, { method:'PATCH', body });
+      else   await apiFetch('/api/depts', { method:'POST', body });
+      await refreshAllFromAPI();
+      closeModal('modal-dept'); renderAdmin(); toast('Saved');
+    }catch(e){ toast('Failed: ' + e.message); }
+    return;
+  }
+
   if(id){
     const d = state.depts.find(x => x.id === +id);
     const oldName = d.name;
@@ -1774,14 +2028,29 @@ document.getElementById('menu-pw').addEventListener('click', () => {
   document.getElementById('pw-cur').value=''; document.getElementById('pw-new').value=''; document.getElementById('pw-new2').value='';
   openModal('modal-pw');
 });
-document.getElementById('pw-save').addEventListener('click', () => {
+document.getElementById('pw-save').addEventListener('click', async () => {
   const u = currentUser();
   const cur = document.getElementById('pw-cur').value;
   const n1 = document.getElementById('pw-new').value;
   const n2 = document.getElementById('pw-new2').value;
-  if(u.password !== cur){ toast('현재 비밀번호가 일치하지 않습니다'); return; }
   if(!n1 || n1 !== n2){ toast('새 비밀번호가 일치하지 않습니다'); return; }
   if(n1.length < 4){ toast('비밀번호는 4자 이상이어야 합니다'); return; }
+
+  if(useAPI){
+    try{
+      // Re-verify current password by attempting login, then update
+      const r = await fetch(API_BASE + '/api/auth/login', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username: u.username, password: cur })
+      });
+      if(!r.ok){ toast('현재 비밀번호가 일치하지 않습니다'); return; }
+      await apiFetch(`/api/users/${u.id}`, { method:'PATCH', body:{ password: n1 } });
+      closeModal('modal-pw'); toast('Password updated');
+    }catch(e){ toast('Failed: ' + e.message); }
+    return;
+  }
+
+  if(u.password !== cur){ toast('현재 비밀번호가 일치하지 않습니다'); return; }
   u.password = n1; saveState();
   logEvent(u.username, '비밀번호 변경', 'write');
   closeModal('modal-pw'); toast('Password updated');
@@ -1801,8 +2070,20 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   bg.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => bg.classList.remove('show')));
 });
 
-if(session && currentUser()){ enterApp(); }
-else { showLogin(); }
+(async () => {
+  if(useAPI && localStorage.getItem(TOKEN_KEY)){
+    try{
+      const me = await apiFetch('/api/auth/me');
+      session = { userId: me.user.id, loginAt: nowStr() };
+      saveSession(session);
+      await refreshAllFromAPI();
+      enterApp();
+      return;
+    }catch(e){ /* token expired/invalid → fall through to login */ }
+  }
+  if(session && currentUser()){ enterApp(); }
+  else { showLogin(); }
+})();
 </script>
 
 </body>
